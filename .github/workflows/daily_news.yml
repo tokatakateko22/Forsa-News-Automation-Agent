@@ -2,9 +2,9 @@ name: Daily Financial News Digest
 
 on:
   schedule:
-    # 06:30 UTC = 09:30 AM Africa/Cairo time (UTC+3)
-    # Runs automatically every day
-    - cron: '30 6 * * *'
+    # 05:30 UTC = 08:30 AM Africa/Cairo time (UTC+3)
+    # Runs automatically every day at 8:30 AM local time
+    - cron: '30 5 * * *'
   workflow_dispatch:
     # Allows manual triggering from the GitHub Actions tab anytime
 
@@ -40,7 +40,7 @@ jobs:
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT || 'toka.ibrahim@Drive-Finance.Com' }}
           POWER_AUTOMATE_WEBHOOK_URL: ${{ secrets.POWER_AUTOMATE_WEBHOOK_URL }}
           SCHEDULE_FREQUENCY: daily
-          SCHEDULE_TIME: "09:30"
+          SCHEDULE_TIME: "08:30"
           TIMEZONE: "Africa/Cairo"
           OVERLAP_HOURS: "2"
           INITIAL_LOOKBACK_HOURS: "24"

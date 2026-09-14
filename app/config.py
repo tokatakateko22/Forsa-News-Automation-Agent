@@ -94,7 +94,7 @@ class Settings(BaseSettings):
         description="How often the pipeline runs",
     )
     schedule_time: str = Field(
-        default="08:00",
+        default="08:30",
         description="HH:MM local time for daily / twice_daily first run",
     )
     schedule_time_2: str = Field(
@@ -128,7 +128,7 @@ class Settings(BaseSettings):
         description="Minimum importance score (0-100) for an event to be emailed",
     )
     relevance_threshold: int = Field(
-        default=65,
+        default=50,
         ge=0,
         le=100,
         description="Minimum relevance score (0-100) for an article to proceed",

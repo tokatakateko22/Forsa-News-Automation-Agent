@@ -24,19 +24,50 @@ log = structlog.get_logger(__name__)
 # If an article contains NONE of these terms, it's rejected without LLM call.
 
 SCOPE_KEYWORDS = [
-    # English
-    "central bank", "cbe", "monetary policy", "interest rate", "mpc",
-    "financial regulatory", "fra", "consumer finance", "consumer credit",
-    "bnpl", "buy now pay later", "installment", "instalment", "fintech",
-    "digital lending", "microfinance", "nbfi", "nbfs",
-    "banking", "bank", "inflation", "gdp", "exchange rate", "fiscal",
-    "valU", "halan", "contact financial", "aman finance", "souhoola",
-    "sympl", "btech finance", "premium card", "shahry", "blnk",
-    "fawry", "paymob", "khazna", "money fellows",
-    "egypt finance", "egyptian economy", "cairo bank",
-    # Arabic transliterations (common in English media)
-    "البنك المركزي", "الرقابة المالية", "تمويل استهلاكي",
-    "سعر الفائدة", "التضخم",
+    # ── Regulators & Monetary Policy (CBE & FRA) ───────────────────────────
+    "central bank", "cbe", "monetary policy", "interest rate", "interest rates",
+    "corridor", "mpc", "discount rate", "cash reserve ratio",
+    "financial regulatory", "financial regulatory authority", "fra",
+    "non-bank", "nbfi", "nbfs", "capital market", "securitization", "securitisation",
+    "البنك المركزي", "المركزي المصري", "الرقابة المالية", "لجنة السياسة النقدية",
+    "سعر الفائدة", "أسعار الفائدة", "الأنشطة المالية غير المصرفية", "توريق", "سندات توريق",
+
+    # ── Consumer Finance & Lending Dynamics ────────────────────────────────
+    "consumer finance", "consumer credit", "retail lending", "retail banking",
+    "bnpl", "buy now pay later", "installment", "instalment", "installments",
+    "digital lending", "microfinance", "sme finance", "merchant financing",
+    "credit limit", "debt recovery", "purchasing power", "consumer spending",
+    "i-score", "iscore", "credit score", "credit reporting", "credit bureau",
+    "تمويل استهلاكي", "تمويل أفراد", "تقسيط", "التقسيط", "الشراء الآن والدفع لاحقاً",
+    "استعلام ائتماني", "اي سكور", "آي سكور", "القوة الشرائية", "تمويل متناهي الصغر",
+
+    # ── FinTech, Payments & Infrastructure ─────────────────────────────────
+    "fintech", "financial technology", "digital onboarding", "e-kyc", "ekyc",
+    "instapay", "meeza", "mobile wallet", "digital wallet", "open banking",
+    "تكنولوجيا مالية", "انستاباي", "ميزة", "محافظ إلكترونية",
+
+    # ── Competitors & Market Players (Consumer Finance / BNPL) ─────────────
+    "forsa", "فرصة",
+    "valU", "valu", "u consumer finance", "فاليو",
+    "halan", "mnt-halan", "mnt halan", "حالا", "حالان",
+    "contact financial", "contact now", "contact credit", "كونتكت",
+    "aman", "aman finance", "أمان",
+    "souhoola", "سهولة",
+    "sympl", "سيمبل",
+    "btech", "b.tech", "btech finance", "minicash", "بي تك",
+    "premium card", "بريميوم كارد",
+    "shahry", "شهري",
+    "blnk", "بلنك",
+    "fawry", "myfawry", "فوري",
+    "paymob", "باي موب",
+    "khazna", "خزنة",
+    "money fellows", "مني فيلوز",
+    "onefinance", "bedaya", "tamweel", "mashroey", "tasheel", "tanmeyah",
+
+    # ── Macroeconomic Drivers ──────────────────────────────────────────────
+    "inflation", "cpi", "capmas", "gdp", "exchange rate", "devaluation", "fx",
+    "egypt finance", "egyptian economy", "egyptian bank", "cairo bank",
+    "التضخم", "سعر الصرف", "الجنيه المصري",
 ]
 
 _KEYWORD_RE = re.compile(

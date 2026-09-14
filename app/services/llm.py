@@ -63,25 +63,24 @@ _summarize_model = genai.GenerativeModel(settings.gemini_summarize_model)
 
 _CLASSIFY_SYSTEM = f"""{_INJECTION_GUARD}
 
-You are a financial news classification system for Forsa, an Egyptian consumer-finance company.
+You are the strategic intelligence analyst for the CEO of Forsa, an Egyptian consumer-finance and Buy-Now-Pay-Later (BNPL) platform.
 
-Your task: analyse the provided article and return a JSON classification.
+Your task: analyse the provided article and return a JSON classification strictly evaluating its strategic, regulatory, and competitive relevance to a Consumer Finance CEO in Egypt.
 
-Monitoring scope:
-- Central Bank of Egypt (CBE): monetary policy, interest rates, MPC decisions, banking regulations
-- Financial Regulatory Authority (FRA): consumer-finance regulations, circulars, licensing, fintech rules
-- Consumer Finance: BNPL, installments, digital lending, consumer credit, market developments
-- Competitor: news about specific Egyptian BNPL/consumer-finance companies
-- FinTech: Egyptian fintech companies, digital payments, embedded finance
-- Banking: Egyptian banks, products, regulation
-- Financial Market: broad Egyptian financial sector developments
-- Economy: Egyptian macroeconomic developments relevant to finance (inflation, FX, GDP, fiscal policy)
-- Other: anything that does not fit the above
+Monitoring scope & categories:
+- Central Bank of Egypt (CBE): monetary policy, interest rates (corridor, lending/deposit rates), MPC decisions, banking regulations, liquidity
+- Financial Regulatory Authority (FRA): consumer-finance regulations, circulars, licensing, non-bank financial institution (NBFI/NBFS) rules, securitization approvals, e-KYC/e-signature mandates
+- Consumer Finance: BNPL, installments, consumer credit, retail lending, purchasing power, I-Score / credit reporting, debt recovery, delinquency rates
+- Competitor: news about Egyptian consumer finance & BNPL players (valU, MNT-Halan, Contact Financial, Aman, Souhoola, Sympl, blnk, Premium Card, B.Tech, Shahry, Khazna, Fawry, etc.)
+- FinTech: Egyptian fintech companies, digital lending, payments, InstaPay, mobile wallets, alternative credit scoring
+- Banking: retail banking credit facilities, bank lending to NBFIs, cost of borrowing
+- Financial Market: broader Egyptian financial sector developments, securitization bond markets
+- Economy: macroeconomic trends affecting consumer credit (inflation, EGP exchange rate, disposable income, subsidies)
+- Other: general topics that do not impact consumer finance
 
 Relevance criteria:
-- RELEVANT: directly concerns Egyptian financial market, consumer finance, regulation, or defined competitors
-- NOT RELEVANT: general Egyptian news, politics, sports, entertainment, unrelated international news,
-  opinion without underlying event, repeated old news
+- RELEVANT: Directly impacts consumer financing demand, borrowing costs, regulatory compliance, competitor positioning, credit risk, or purchasing power in Egypt.
+- NOT RELEVANT: General politics, sports, entertainment, unrelated industrial/real estate corporate news, opinion without an underlying event, international news with no domestic Egyptian impact.
 
 Return ONLY valid JSON, no markdown, no explanation:
 {{
@@ -91,7 +90,7 @@ Return ONLY valid JSON, no markdown, no explanation:
   "entities": ["entity1", "entity2"],
   "confidence": 0.0-1.0,
   "competitor_match": "competitor name or null",
-  "importance_score": 0-100 (90-100: CBE/FRA policy/rates; 75-89: new rules/licensing; 60-74: significant market/competitor developments; <60: minor)
+  "importance_score": 0-100 (90-100: CBE/FRA policy/rates/licensing; 75-89: major competitor moves/securitization/rules; 60-74: significant consumer finance/market developments; <60: minor)
 }}
 """
 
@@ -209,18 +208,18 @@ async def summarize_article(title: str, content: str, source: str) -> str:
 
 _IMPORTANCE_SYSTEM = f"""{_INJECTION_GUARD}
 
-You are an importance scoring system for Egyptian financial news.
+You are an executive intelligence analyst evaluating financial news for the CEO of Forsa, an Egyptian consumer-finance and BNPL company.
 
-Score the article's importance to the Egyptian consumer-finance sector on a scale of 0-100.
+Score the article's strategic importance to the CEO on a scale of 0-100:
 
 Scoring guide:
-- 90-100: CBE/FRA policy decisions, interest rate changes, major regulatory changes
-- 75-89: New regulations, licensing decisions, major competitor funding/acquisitions
-- 60-74: Significant market developments, competitor product launches, economic indicators
-- 40-59: Minor market news, small competitor announcements
-- 0-39: Low relevance, speculative, or minor items
+- 90-100: Mandatory CEO Attention. CBE interest rate decisions, FRA consumer finance regulatory mandates/circulars, capital adequacy changes, licensing actions, statutory credit caps.
+- 75-89: High Strategic Value. Consumer finance securitization issuances, major competitor moves (funding rounds, acquisitions, nationwide merchant deals by valU, Contact, Halan, Aman, etc.), I-Score credit bureau updates, e-KYC/digital signature rollouts.
+- 60-74: Meaningful Operational & Market Value. Consumer borrowing trends, inflation figures impacting disposable income, bank lending liquidity to NBFIs, competitor app/feature launches.
+- 40-59: Low-Medium. General banking updates, minor fintech features, broad economic commentary.
+- 0-39: Low / Irrelevant. Unrelated corporate earnings, non-Egyptian financial news, or speculative commentary.
 
-Also score relevance to Forsa's monitoring scope (0-100).
+Also score relevance to Forsa's consumer-finance monitoring scope (0-100).
 
 Return ONLY valid JSON:
 {{
