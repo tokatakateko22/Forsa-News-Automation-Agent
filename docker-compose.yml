@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL database ────────────────────────────────────────────────────
+  # NOTE: Docker is not required to run this agent.
+  # This file is provided for future containerised deployment.
+  # The agent works with any remote PostgreSQL instance via DATABASE_URL.
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: forsa_news
+      POSTGRES_USER: forsa
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forsa -d forsa_news"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── News Agent ─────────────────────────────────────────────────────────────
+  agent:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://forsa:${DB_PASSWORD:-changeme}@db:5432/forsa_news
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      SERPAPI_KEY: ${SERPAPI_KEY}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_RECIPIENT: ${EMAIL_RECIPIENT}
+      SCHEDULE_FREQUENCY: ${SCHEDULE_FREQUENCY:-daily}
+      SCHEDULE_TIME: ${SCHEDULE_TIME:-08:00}
+      TIMEZONE: ${TIMEZONE:-Africa/Cairo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    env_file:
+      - .env
+    command: ["py", "-3", "app/main.py"]
+
+volumes:
+  postgres_data:

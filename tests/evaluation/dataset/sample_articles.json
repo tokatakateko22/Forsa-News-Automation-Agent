@@ -1,0 +1,196 @@
+[
+  {
+    "article_id": "eval-001",
+    "title": "CBE Monetary Policy Committee Raises Interest Rates by 100 Basis Points",
+    "url": "https://www.cbe.org.eg/en/press-releases/mpc-decision-sep-2026",
+    "source_name": "Central Bank of Egypt",
+    "source_tier": 1,
+    "language": "en",
+    "content": "The Monetary Policy Committee of the Central Bank of Egypt decided to raise the overnight deposit rate, overnight lending rate, and the rate of the main operation by 100 basis points to 28.25%, 29.25%, and 28.75%, respectively. The discount rate was also raised by 100 basis points to 28.75%.",
+    "published_at": "2026-09-13T10:00:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "CBE",
+      "subcategory": "Monetary Policy",
+      "entities": ["CBE", "Monetary Policy Committee", "interest rate"],
+      "expected_importance": 95,
+      "should_send": true,
+      "notes": "Tier 1 source, critical category, MPC decision"
+    }
+  },
+  {
+    "article_id": "eval-002",
+    "title": "FRA Approves New Consumer Finance Regulation for Digital Lenders",
+    "url": "https://fra.gov.eg/en/fra_news/digital-lending-regulation-2026",
+    "source_name": "Financial Regulatory Authority",
+    "source_tier": 1,
+    "language": "en",
+    "content": "The Financial Regulatory Authority has issued new regulations governing digital consumer lending platforms in Egypt. The new rules require all BNPL and digital credit providers to obtain FRA licensing and maintain minimum capital requirements of EGP 50 million.",
+    "published_at": "2026-09-13T09:00:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "FRA",
+      "subcategory": "Consumer Finance Regulation",
+      "entities": ["FRA", "digital lending", "BNPL", "consumer finance"],
+      "expected_importance": 92,
+      "should_send": true,
+      "notes": "Tier 1 source, regulatory change affecting Forsa's market"
+    }
+  },
+  {
+    "article_id": "eval-003",
+    "title": "valU Raises $150 Million in Series C Funding Round",
+    "url": "https://zawya.com/valu-series-c-2026",
+    "source_name": "Zawya",
+    "source_tier": 2,
+    "language": "en",
+    "content": "Egyptian BNPL company valU, a subsidiary of EFG Hermes, has closed a $150 million Series C funding round led by a consortium of regional and international investors. The company plans to use the proceeds to expand its merchant network and launch new financial products.",
+    "published_at": "2026-09-13T08:30:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "Competitor",
+      "subcategory": "Funding",
+      "entities": ["valU", "EFG Hermes", "BNPL"],
+      "competitor_match": "U Consumer Finance / valU",
+      "expected_importance": 82,
+      "should_send": true,
+      "notes": "Direct P1 competitor major funding event"
+    }
+  },
+  {
+    "article_id": "eval-004",
+    "title": "Egypt's Inflation Rate Drops to 24.5% in August 2026",
+    "url": "https://enterprise.press/egypt-inflation-aug-2026",
+    "source_name": "Enterprise Egypt",
+    "source_tier": 2,
+    "language": "en",
+    "content": "Egypt's annual urban inflation rate fell to 24.5% in August 2026, down from 26.3% in July, according to data released by CAPMAS. Core inflation also declined to 22.8%. The CBE targets inflation in the 5-9% range over the medium term.",
+    "published_at": "2026-09-13T11:00:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "Economy",
+      "subcategory": "Inflation",
+      "entities": ["CAPMAS", "CBE", "inflation"],
+      "expected_importance": 70,
+      "should_send": true,
+      "notes": "Economic indicator relevant to consumer finance sector"
+    }
+  },
+  {
+    "article_id": "eval-005",
+    "title": "Egypt National Football Team Defeats Senegal 2-1",
+    "url": "https://egyptsports.com/egypt-senegal-2026",
+    "source_name": "Egypt Sports News",
+    "source_tier": 3,
+    "language": "en",
+    "content": "The Egyptian national football team defeated Senegal 2-1 in a World Cup qualifier match held in Cairo.",
+    "published_at": "2026-09-13T22:00:00Z",
+    "labels": {
+      "is_relevant": false,
+      "category": "Other",
+      "subcategory": null,
+      "entities": ["Egypt", "Senegal"],
+      "expected_importance": 0,
+      "should_send": false,
+      "notes": "Sports news — completely irrelevant, must be filtered out"
+    }
+  },
+  {
+    "article_id": "eval-006",
+    "title": "MNT-Halan Partners with Visa for Digital Payment Integration",
+    "url": "https://dailynewsegypt.com/halan-visa-partnership-2026",
+    "source_name": "Daily News Egypt",
+    "source_tier": 2,
+    "language": "en",
+    "content": "MNT-Halan, Egypt's leading digital lending platform, announced a strategic partnership with Visa to integrate digital payment capabilities across its lending and BNPL products. The partnership will allow Halan users to make payments at any Visa-accepting merchant.",
+    "published_at": "2026-09-13T10:30:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "Competitor",
+      "subcategory": "Partnership",
+      "entities": ["MNT-Halan", "Visa", "digital payments", "BNPL"],
+      "competitor_match": "MNT-Halan",
+      "expected_importance": 78,
+      "should_send": true,
+      "notes": "Direct P1 competitor strategic partnership"
+    }
+  },
+  {
+    "article_id": "eval-007",
+    "title": "Opinion: Why Egypt's BNPL Bubble Will Burst in 2027",
+    "url": "https://somesite.com/opinion-bnpl-bubble-2026",
+    "source_name": "Unknown Blog",
+    "source_tier": 3,
+    "language": "en",
+    "content": "In my opinion, the Egyptian BNPL market is overheated. I predict that by 2027, we will see major consolidation. Companies like valU and Halan are overvalued. This is not financial advice.",
+    "published_at": "2026-09-13T07:00:00Z",
+    "labels": {
+      "is_relevant": false,
+      "category": "Other",
+      "subcategory": null,
+      "entities": ["BNPL", "valU", "Halan"],
+      "expected_importance": 15,
+      "should_send": false,
+      "notes": "Pure opinion/speculation from Tier 3 source — should be filtered"
+    }
+  },
+  {
+    "article_id": "eval-008",
+    "title": "CBE Raises Interest Rate — Reuters Report",
+    "url": "https://reuters.com/egypt-cbe-rate-sep-2026",
+    "source_name": "Reuters",
+    "source_tier": 2,
+    "language": "en",
+    "content": "The Central Bank of Egypt raised its benchmark interest rate by 100 basis points at its September 2026 Monetary Policy Committee meeting, according to an official statement.",
+    "published_at": "2026-09-13T10:30:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "CBE",
+      "subcategory": "Monetary Policy",
+      "entities": ["CBE", "Monetary Policy Committee", "interest rate"],
+      "expected_importance": 93,
+      "should_send": true,
+      "is_duplicate_of": "eval-001",
+      "notes": "Same event as eval-001 — Reuters coverage. Should be grouped with eval-001, not sent separately."
+    }
+  },
+  {
+    "article_id": "eval-009",
+    "title": "Paymob Receives NBFS License from FRA for Payment Processing",
+    "url": "https://amwalalghad.com/paymob-fra-license-2026",
+    "source_name": "Amwal Al Ghad",
+    "source_tier": 2,
+    "language": "ar",
+    "content": "حصلت شركة باي موب على ترخيص من الهيئة العامة للرقابة المالية لمزاولة نشاط خدمات الدفع في مصر، في خطوة تعزز من قدرتها على تقديم خدمات الدفع الرقمي.",
+    "published_at": "2026-09-13T09:30:00Z",
+    "labels": {
+      "is_relevant": true,
+      "category": "FinTech",
+      "subcategory": "Licensing",
+      "entities": ["Paymob", "FRA", "NBFS"],
+      "competitor_match": "Paymob",
+      "expected_importance": 72,
+      "should_send": true,
+      "notes": "Adjacent market intelligence — Paymob FRA licensing"
+    }
+  },
+  {
+    "article_id": "eval-010",
+    "title": "Egypt Hosts International Tourism Fair in Sharm El Sheikh",
+    "url": "https://egypttoday.com/tourism-fair-2026",
+    "source_name": "Egypt Today",
+    "source_tier": 3,
+    "language": "en",
+    "content": "Egypt hosted a major international tourism fair in Sharm El Sheikh this week, attracting over 500 exhibitors from 60 countries.",
+    "published_at": "2026-09-13T08:00:00Z",
+    "labels": {
+      "is_relevant": false,
+      "category": "Other",
+      "subcategory": null,
+      "entities": ["Egypt", "Sharm El Sheikh"],
+      "expected_importance": 0,
+      "should_send": false,
+      "notes": "Tourism news — irrelevant"
+    }
+  }
+]
