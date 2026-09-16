@@ -83,35 +83,44 @@ ARABIC_COMPETITOR_MAP = {
     "بلنك": "blnk",
     "شهري": "Shahry",
     "بي تك": "B.Tech",
+    "موبايلي": "Mobily Pay",
+    "اورنچ كاش": "Orange Cash",
+    "اورانج كاش": "Orange Cash",
+    "فودافون كاش": "Vodafone Cash",
+    "اتصالات كاش": "Etisalat Cash",
+    "وي باي": "WE Pay",
+    "انستاباي": "InstaPay",
+    "انستا باي": "InstaPay",
+    "اي سكور": "I-Score",
+    "آي سكور": "I-Score",
     "فوري": "Fawry",
-    "باي موب": "Paymob",
-    "خزنة": "Khazna",
+    "إي فاينانس": "e-finance",
+    "اي فاينانس": "e-finance",
 }
 
 
 def _format_category_label(event: NewsEvent, summary) -> str:
-    """Format category and subcategory labels strictly in English."""
-    import re
-    category_label = event.category or "Other"
+    """Return a clean English category label."""
+    sub = summary.subcategory or event.subcategory or ""
+    cat = event.category or "News"
 
-    if event.category == "Competitor" and getattr(summary, "competitor_name", None):
-        comp = summary.competitor_name
-        if comp in ARABIC_COMPETITOR_MAP:
-            comp = ARABIC_COMPETITOR_MAP[comp]
-        elif re.search(r"[\u0600-\u06FF]", comp):
-            comp = ""
+    if cat == "Competitor":
+        comp = getattr(summary, "competitor_name", None) or getattr(event, "competitor_match", None) or getattr(summary, "competitor_match", None)
+        if not comp and sub:
+            comp = ARABIC_COMPETITOR_MAP.get(sub, sub)
         if comp:
-            return f"Competitor — {comp}"
-        return "Competitor"
+            clean_comp = ARABIC_COMPETITOR_MAP.get(comp, comp)
+            return f"Competitor — {clean_comp}"
+        return "Competitor — Market Activity"
 
-    if event.subcategory and not re.search(r"[\u0600-\u06FF]", event.subcategory):
-        return f"{event.category} — {event.subcategory}"
-
-    return category_label
+    if sub:
+        clean_sub = ARABIC_COMPETITOR_MAP.get(sub, sub)
+        return f"{cat} — {clean_sub}"
+    return cat
 
 
 def _event_plain_block(event: NewsEvent) -> str:
-    """Plain text block for one event."""
+    """Plain-text block for one event."""
     summary = event.summary
     if not summary:
         return ""
@@ -142,9 +151,14 @@ def _event_html_block(event: NewsEvent) -> str:
     category_label = _format_category_label(event, summary)
 
     color_map = {
+        "🏛️": "#2b6cb0",
         "🔴": "#e53e3e",
+        "🏢": "#dd6b20",
         "🟠": "#dd6b20",
         "🟡": "#d69e2e",
+        "📈": "#319795",
+        "📊": "#4a5568",
+        "🏦": "#2b6cb0",
         "⚪": "#718096",
     }
     accent = color_map.get(emoji, "#718096")
@@ -156,25 +170,19 @@ def _event_html_block(event: NewsEvent) -> str:
   <p style="margin:0;font-size:12px;color:#718096;">
     <strong>Source:</strong> {summary.source_name} &nbsp;|&nbsp;
     <strong>Published:</strong> {_format_date(summary.published_at)} &nbsp;|&nbsp;
-    <a href="{summary.canonical_url}" style="color:#3182ce;">View Article →</a>
+    <a href="{summary.canonical_url}" style="color:#2b6cb0;font-weight:600;">View Article →</a>
   </p>
 </div>
 """
 
 
-# Executive Pillars
+# Executive Pillars in requested order: CBE -> Competitors -> Market Backdrop & Economy -> FRA
 PILLARS = [
     {
         "id": "cbe",
         "title": "Central Bank of Egypt (CBE) — Macro & Monetary Policy",
         "emoji": "🏛️",
         "categories": ["CBE"],
-    },
-    {
-        "id": "fra",
-        "title": "Financial Regulatory Authority (FRA) — Regulations & Market Oversight",
-        "emoji": "🔴",
-        "categories": ["FRA"],
     },
     {
         "id": "competitors",
@@ -187,6 +195,12 @@ PILLARS = [
         "title": "Market Backdrop & Economy",
         "emoji": "📈",
         "categories": ["Financial Market", "Economy", "Banking", "Other"],
+    },
+    {
+        "id": "fra",
+        "title": "Financial Regulatory Authority (FRA) — Regulations & Market Oversight",
+        "emoji": "🔴",
+        "categories": ["FRA"],
     },
 ]
 
@@ -310,8 +324,13 @@ async def format_email(state: AgentState) -> AgentState:
 
     col_start = state.get("collection_start")
     col_end = state.get("collection_end")
-    is_weekly = settings.schedule_frequency == "weekly" or (
-        col_start and col_end and (col_end - col_start).total_seconds() >= 86400 * 3
+    is_span_weekly = (
+        (col_end - col_start).total_seconds() >= 86400 * 3
+        if (col_start and col_end)
+        else False
+    )
+    is_weekly = is_span_weekly or (
+        settings.schedule_frequency == "weekly" and not (col_start and col_end)
     )
 
     if is_weekly and col_start and col_end:

@@ -32,6 +32,11 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description="Run Forsa News Agent once manually.")
     default_days = 7 if settings.schedule_frequency == "weekly" else None
     parser.add_argument(
+        "--today",
+        action="store_true",
+        help="Run for today only (past 24 hours).",
+    )
+    parser.add_argument(
         "--days",
         type=int,
         default=default_days,
@@ -44,16 +49,18 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
+    effective_days = 1 if args.today else args.days
+
     print("=" * 65)
     print("Forsa News Agent — Manual Pipeline Run")
     print(f"Schedule Mode:     {settings.schedule_frequency.upper()}")
-    print(f"Lookback Days:     {args.days if args.days is not None else 'Default'}")
+    print(f"Lookback Window:   {'TODAY ONLY (Last 24h)' if args.today or effective_days == 1 else f'{effective_days} days'}")
     print(f"Ignore Sent News:  {args.ignore_sent}")
     print(f"Recipient:         {settings.email_recipient}")
     print("=" * 65)
     print("Starting pipeline run...")
     try:
-        await run_pipeline(lookback_days=args.days, ignore_already_sent=args.ignore_sent)
+        await run_pipeline(lookback_days=effective_days, ignore_already_sent=args.ignore_sent)
     finally:
         await close_db()
     print("Done.")
