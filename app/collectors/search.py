@@ -26,7 +26,7 @@ SERPAPI_BASE = "https://serpapi.com/search.json"
 # Each query targets a specific monitoring scope. Bilingual where useful.
 
 CATEGORY_QUERIES: list[dict] = [
-    # CBE / Monetary Policy
+    # CBE / Monetary Policy & Key Indicators
     {
         "query": "Central Bank of Egypt interest rate monetary policy",
         "category": "CBE",
@@ -38,11 +38,16 @@ CATEGORY_QUERIES: list[dict] = [
         "lang": "ar",
     },
     {
-        "query": "CBE MPC decision Egypt banking regulation",
+        "query": '"Central Bank of Egypt" reserves OR inflation OR MPC',
         "category": "CBE",
         "lang": "en",
     },
-    # FRA / Consumer Finance Regulation
+    {
+        "query": '"البنك المركزي المصري" احتياطي التضخم "السياسة النقدية"',
+        "category": "CBE",
+        "lang": "ar",
+    },
+    # FRA / Consumer Finance Regulation & Non-Banking
     {
         "query": "Financial Regulatory Authority FRA Egypt consumer finance regulation",
         "category": "FRA",
@@ -54,11 +59,16 @@ CATEGORY_QUERIES: list[dict] = [
         "lang": "ar",
     },
     {
+        "query": '"الرقابة المالية" توريق OR "آي سكور" OR "التمويل الاستهلاكي"',
+        "category": "FRA",
+        "lang": "ar",
+    },
+    {
         "query": "FRA Egypt fintech BNPL consumer finance license",
         "category": "FRA",
         "lang": "en",
     },
-    # Egyptian Consumer Finance Market
+    # Egyptian Consumer Finance & BNPL Market
     {
         "query": "Egypt consumer finance BNPL installment lending market",
         "category": "Consumer Finance",
@@ -70,30 +80,51 @@ CATEGORY_QUERIES: list[dict] = [
         "lang": "ar",
     },
     {
+        "query": '"سندات توريق" OR "تمويل استهلاكي" مصر',
+        "category": "Consumer Finance",
+        "lang": "ar",
+    },
+    {
         "query": "Egypt digital lending fintech consumer credit",
         "category": "FinTech",
         "lang": "en",
     },
-    # Egyptian Financial Market
+    # Egyptian Financial Market & Economy
     {
         "query": "Egypt banking fintech financial services market",
         "category": "Financial Market",
         "lang": "en",
     },
     {
-        "query": "Egypt financial inclusion payments digital banking",
-        "category": "Financial Market",
-        "lang": "en",
-    },
-    # Egyptian Economy (scoped)
-    {
         "query": "Egypt inflation GDP exchange rate fiscal policy economy",
         "category": "Economy",
         "lang": "en",
     },
     {
-        "query": "مصر تضخم ناتج محلي سعر صرف اقتصاد",
+        "query": "مصر تضخم احتياطي نقد أجنبي سعر صرف اقتصاد",
         "category": "Economy",
+        "lang": "ar",
+    },
+    # Strategic Consumer Finance Enforcement, Manuals & Real-time I-Score
+    {
+        "query": '("أولين" OR "جلوبال بارادايم" OR "Global Paradigm" OR "Ollin") ("تمويل استهلاكي" OR "الرقابة المالية" OR "consumer finance")',
+        "category": "FRA",
+        "lang": "ar",
+    },
+    {
+        "query": '("الرقابة المالية" OR "FRA") ("دليل إشرافي" OR "قواعد التمويل الاستهلاكي" OR "supervisory manual" OR "50%")',
+        "category": "FRA",
+        "lang": "ar",
+    },
+    {
+        "query": '("الربط اللحظي" OR "آي سكور" OR "I-Score") ("تمويل استهلاكي" OR "الرقابة المالية" OR "credit reporting")',
+        "category": "FRA",
+        "lang": "ar",
+    },
+    # Weekly Market Backdrop
+    {
+        "query": '("EGX30" OR "البورصة المصرية") ("ختام الأسبوع" OR "أسبوع" OR "الأسبوع" OR "ends flat week")',
+        "category": "Financial Market",
         "lang": "ar",
     },
 ]
@@ -104,7 +135,7 @@ def _days_back(start_time: datetime, end_time: datetime) -> str:
     delta = end_time - start_time
     if delta.total_seconds() <= 86400 * 2:
         return "qdr:d"
-    elif delta.total_seconds() <= 86400 * 7:
+    elif delta.total_seconds() <= 86400 * 8:
         return "qdr:w"
     return "qdr:m"
 
@@ -129,7 +160,8 @@ class SerpAPICollector(NewsSourceCollector):
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             for query_cfg in CATEGORY_QUERIES:
                 try:
-                    results = await self._search(client, query_cfg["query"], tbs)
+                    lang = query_cfg.get("lang", "en")
+                    results = await self._search(client, query_cfg["query"], tbs, lang)
                     for r in results:
                         pub_date = self._parse_date(r.get("date", ""), end_time)
                         if pub_date and pub_date < start_time:
@@ -139,7 +171,7 @@ class SerpAPICollector(NewsSourceCollector):
                             url=r.get("link", "").strip(),
                             content=r.get("snippet", ""),
                             published_at=pub_date,
-                            language=query_cfg.get("lang", "en"),
+                            language=lang,
                         )
                         if article.title and article.url:
                             articles.append(article)
@@ -154,7 +186,7 @@ class SerpAPICollector(NewsSourceCollector):
         return articles
 
     async def _search(
-        self, client: httpx.AsyncClient, query: str, tbs: str
+        self, client: httpx.AsyncClient, query: str, tbs: str, lang: str = "en"
     ) -> list[dict]:
         params = {
             "engine": "google_news",
@@ -162,13 +194,12 @@ class SerpAPICollector(NewsSourceCollector):
             "tbs": tbs,
             "api_key": self._api_key,
             "num": 20,
-            "hl": "en",
+            "hl": lang,
             "gl": "eg",
         }
         response = await client.get(SERPAPI_BASE, params=params)
         response.raise_for_status()
         data = response.json()
-        # SerpAPI returns news_results for Google News engine
         return data.get("news_results", [])
 
     def _parse_date(self, raw: str, fallback: datetime) -> Optional[datetime]:
@@ -217,9 +248,22 @@ class SerpAPICompetitorCollector(NewsSourceCollector):
         articles: list[Article] = []
         tbs = _days_back(start_time, end_time)
 
-        # Build a targeted query: primary name + up to 3 aliases
-        terms = [self.competitor_name] + self.aliases[:3]
-        query = f'("{self.competitor_name}" OR "{self.aliases[0] if self.aliases else self.competitor_name}") Egypt finance'
+        # Clean terms: avoid slashes and punctuation that confuse Google News
+        raw_terms = [self.competitor_name] + (self.aliases or [])
+        clean_terms: list[str] = []
+        for t in raw_terms:
+            t = t.strip()
+            if "/" in t:
+                for sub in t.split("/"):
+                    sub = sub.strip()
+                    if sub and sub not in clean_terms:
+                        clean_terms.append(sub)
+            elif t and t not in clean_terms:
+                clean_terms.append(t)
+
+        selected = clean_terms[:4] if clean_terms else [self.competitor_name]
+        or_terms = " OR ".join(f'"{term}"' for term in selected)
+        query = f"({or_terms}) (تمويل OR تقسيط OR BNPL OR finance)"
 
         async with _COMPETITOR_SEMAPHORE:
             async with httpx.AsyncClient(timeout=self.timeout) as client:

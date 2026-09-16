@@ -165,12 +165,16 @@ async def collect_news(state: AgentState) -> AgentState:
 
 async def _persist_articles(articles: list[Article]) -> None:
     """Save articles to the database. If already existing, sync in-memory article_id."""
+    if not articles:
+        return
     async with get_session() as session:
         repo = ArticleRepository(session)
+        urls = [a.url for a in articles if a.url]
+        existing_map = await repo.get_existing_url_map(urls)
+
         for article in articles:
-            existing_id = await repo.get_id_by_url(article.url)
-            if existing_id:
-                article.article_id = str(existing_id)
+            if article.url in existing_map:
+                article.article_id = str(existing_map[article.url])
                 continue
             orm_obj = ArticleORM(
                 id=uuid.UUID(article.article_id),

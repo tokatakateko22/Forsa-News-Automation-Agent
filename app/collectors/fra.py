@@ -23,30 +23,32 @@ log = structlog.get_logger(__name__)
 
 FRA_PAGES = [
     {
-        "url": "https://fra.gov.eg/en/fra_news/",
-        "language": "en",
-        "base": "https://fra.gov.eg",
-    },
-    {
-        "url": "https://fra.gov.eg/fra_news/",
+        "url": "https://fra.gov.eg/",
         "language": "ar",
         "base": "https://fra.gov.eg",
     },
     {
-        "url": "https://fra.gov.eg/en/decisions/",
-        "language": "en",
+        "url": "https://fra.gov.eg/category/mc/newsevents/releases/",
+        "language": "ar",
         "base": "https://fra.gov.eg",
     },
     {
-        "url": "https://fra.gov.eg/decisions/",
-        "language": "ar",
+        "url": "https://fra.gov.eg/en/",
+        "language": "en",
         "base": "https://fra.gov.eg",
     },
 ]
 
 HEADERS = {
-    "User-Agent": "ForsaNewsAgent/1.0 (+https://forsaegypt.com)",
-    "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
+}
+
+AR_MONTHS = {
+    "يناير": 1, "فبراير": 2, "مارس": 3, "أبريل": 4, "ابريل": 4,
+    "مايو": 5, "يونيو": 6, "يوليو": 7, "أغسطس": 8, "اغسطس": 8,
+    "سبتمبر": 9, "أكتوبر": 10, "اكتوبر": 10, "نوفمبر": 11, "ديسمبر": 12,
 }
 
 
@@ -64,10 +66,12 @@ class FRACollector(NewsSourceCollector):
 
     async def fetch(self, start_time: datetime, end_time: datetime) -> list[Article]:
         articles: list[Article] = []
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+        seen_urls: set[str] = set()
+
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, verify=False) as client:
             for page_cfg in FRA_PAGES:
                 try:
-                    items = await self._scrape_page(client, page_cfg, start_time, end_time)
+                    items = await self._scrape_page(client, page_cfg, start_time, end_time, seen_urls)
                     articles.extend(items)
                 except Exception as exc:
                     log.warning(
@@ -75,14 +79,9 @@ class FRACollector(NewsSourceCollector):
                         url=page_cfg["url"],
                         error=str(exc),
                     )
-        # Deduplicate by URL
-        seen: set[str] = set()
-        unique = []
-        for a in articles:
-            if a.url not in seen:
-                seen.add(a.url)
-                unique.append(a)
-        return unique
+
+        log.info("fra.fetched", total=len(articles))
+        return articles
 
     async def _scrape_page(
         self,
@@ -90,71 +89,99 @@ class FRACollector(NewsSourceCollector):
         cfg: dict,
         start_time: datetime,
         end_time: datetime,
+        seen_urls: set[str],
     ) -> list[Article]:
         response = await client.get(cfg["url"], headers=HEADERS)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")
         articles: list[Article] = []
 
-        # FRA WordPress-based site — look for article/post elements
-        selectors = [
-            "article.post",
-            ".post-item",
-            ".news-post",
-            "article",
-            ".entry-title a",
-        ]
-        items = []
-        for sel in selectors:
-            items = soup.select(sel)
-            if items:
-                break
+        candidates: list[tuple[str, str, BeautifulSoup]] = []
+        for a_tag in soup.find_all("a", href=True):
+            href = a_tag.get("href", "").strip()
+            title = a_tag.get_text(" ", strip=True)
 
-        for item in items:
-            link_tag = item if item.name == "a" else item.find("a", href=True)
-            if not link_tag:
+            if "/fra_news/" not in href or not title or len(title) < 15:
                 continue
 
-            title = link_tag.get_text(strip=True)
-            href = link_tag.get("href", "")
-            if not href or not title or len(title) < 10:
+            full_url = urljoin(cfg["base"], href)
+            if full_url in seen_urls:
                 continue
+            seen_urls.add(full_url)
+            candidates.append((title, full_url, a_tag))
 
-            url = urljoin(cfg["base"], href)
-            pub_date = self._extract_date(item)
+        for title, full_url, a_tag in candidates:
+            # 1. Try to extract date from parent card
+            parent = a_tag.find_parent(["div", "article", "li"])
+            p_text = parent.get_text(" ", strip=True) if parent else ""
+            pub_date = self._parse_date(p_text)
 
+            # 2. Fetch article page to extract full content and date if needed
+            content = ""
+            try:
+                art_resp = await client.get(full_url, headers=HEADERS)
+                if art_resp.status_code == 200:
+                    art_soup = BeautifulSoup(art_resp.text, "lxml")
+                    for tag in art_soup(["script", "style", "nav", "header", "footer"]):
+                        tag.decompose()
+                    paragraphs = [
+                        p.get_text(" ", strip=True)
+                        for p in art_soup.find_all("p")
+                        if len(p.get_text(" ", strip=True)) > 20
+                    ]
+                    content = "\n\n".join(paragraphs)
+                    if not pub_date:
+                        pub_date = self._parse_date(content[:1000])
+            except Exception as exc:
+                log.warning("fra.article_fetch_failed", url=full_url, error=str(exc))
+
+            # If date is outside collection window, skip
             if pub_date and (pub_date < start_time or pub_date > end_time):
                 continue
 
             articles.append(
                 self._make_article(
                     title=title,
-                    url=url,
-                    published_at=pub_date,
+                    url=full_url,
+                    content=content or None,
+                    published_at=pub_date or end_time,
                     language=cfg["language"],
                 )
             )
 
         return articles
 
-    def _extract_date(self, element) -> Optional[datetime]:
-        """Extract date from FRA element."""
-        time_tag = element.find("time")
-        if time_tag:
-            dt_str = time_tag.get("datetime") or time_tag.get_text(strip=True)
+    def _parse_date(self, text: str) -> Optional[datetime]:
+        """Extract date from text using Arabic or English date regex."""
+        import re
+        if not text:
+            return None
+
+        # 1. Arabic format: 12 سبتمبر 2026
+        m = re.search(
+            r"(\d{1,2})\s+(يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)\s+(\d{4})",
+            text,
+        )
+        if m:
             try:
-                return dparser.parse(dt_str, fuzzy=True).astimezone(timezone.utc)
+                day = int(m.group(1))
+                mon = AR_MONTHS[m.group(2)]
+                yr = int(m.group(3))
+                return datetime(yr, mon, day, 12, 0, 0, tzinfo=timezone.utc)
             except Exception:
                 pass
 
-        # date class patterns common in WordPress themes
-        for cls in ["date", "entry-date", "published", "post-date"]:
-            date_el = element.find(class_=cls)
-            if date_el:
+        # 2. English / numeric patterns
+        date_patterns = [
+            r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b",
+            r"\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b",
+            r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}",
+        ]
+        for pat in date_patterns:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
                 try:
-                    return dparser.parse(
-                        date_el.get_text(strip=True), fuzzy=True
-                    ).astimezone(timezone.utc)
+                    return dparser.parse(m.group(), fuzzy=True).astimezone(timezone.utc)
                 except Exception:
                     pass
         return None

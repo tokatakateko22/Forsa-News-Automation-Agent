@@ -6,11 +6,13 @@ Cleans raw article content before any LLM processing.
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import unicodedata
 from typing import Optional
 
 import chardet
+import httpx
 import structlog
 from bs4 import BeautifulSoup
 
@@ -112,25 +114,76 @@ def clean_article(article: Article) -> Article:
     )
 
 
+_EXTRACTION_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+}
+
+
+async def _fetch_full_text(client: httpx.AsyncClient, url: str) -> str:
+    """Fetch article body paragraphs if raw content is a brief snippet or empty."""
+    if not url.startswith("http"):
+        return ""
+    try:
+        resp = await client.get(url, headers=_EXTRACTION_HEADERS)
+        if resp.status_code != 200:
+            return ""
+        soup = BeautifulSoup(resp.text, "lxml")
+        for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form", "button", "iframe"]):
+            tag.decompose()
+
+        article = (
+            soup.find("article")
+            or soup.find("main")
+            or soup.find("div", class_=lambda c: c and any(k in str(c).lower() for k in ("content", "article", "entry", "post", "story", "detail")))
+            or soup.body
+        )
+        if not article:
+            return ""
+
+        paragraphs = article.find_all("p") if article else []
+        meaningful = [p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 25]
+        if not meaningful or sum(len(m) for m in meaningful) < 100:
+            doc_meaningful = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 25]
+            if len(" ".join(doc_meaningful)) > len(" ".join(meaningful)):
+                meaningful = doc_meaningful
+
+        if meaningful:
+            return " ".join(meaningful)[:4000]
+        return ""
+    except Exception:
+        return ""
+
+
 async def preprocess_news(state: AgentState) -> AgentState:
     """
     LangGraph node: preprocess_news
-    Cleans HTML, normalises encoding, deduplicates paragraphs.
+    Cleans HTML, normalises encoding, deduplicates paragraphs,
+    and enriches articles with full body text when content is too brief.
     """
+    raw_articles = state["raw_articles"]
     log.info(
         "node.preprocess.start",
-        article_count=len(state["raw_articles"]),
+        article_count=len(raw_articles),
     )
 
     clean_articles: list[Article] = []
-    for article in state["raw_articles"]:
+    articles_needing_fetch: list[tuple[int, Article]] = []
+
+    for article in raw_articles:
         try:
             cleaned = clean_article(article)
-            # Skip articles with no useful content after cleaning
+            # Skip articles with no useful title
             if len(cleaned.title) < 5:
                 log.debug("preprocess.skip_empty", url=article.url)
                 continue
+            idx = len(clean_articles)
             clean_articles.append(cleaned)
+            # If content is short, fetch full text only for articles in our monitoring scope or Tier 1
+            if len(cleaned.content) < 200 and cleaned.url.startswith("http"):
+                from app.graph.nodes.classify import _passes_keyword_filter
+                if cleaned.source_tier == 1 or _passes_keyword_filter(cleaned):
+                    articles_needing_fetch.append((idx, cleaned))
         except Exception as exc:
             log.warning(
                 "preprocess.article_failed",
@@ -138,9 +191,31 @@ async def preprocess_news(state: AgentState) -> AgentState:
                 error=str(exc),
             )
 
+    # Concurrently enrich articles needing full text
+    if articles_needing_fetch:
+        log.info("preprocess.enriching_content", count=len(articles_needing_fetch))
+        sem = asyncio.Semaphore(10)
+
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            async def _enrich(list_idx: int, art: Article) -> None:
+                async with sem:
+                    try:
+                        full_text = await _fetch_full_text(client, art.url)
+                        if full_text and len(full_text) > len(art.content):
+                            cleaned_body = clean_article_content(full_text)
+                            if len(cleaned_body) > len(art.content):
+                                clean_articles[list_idx] = art.model_copy(
+                                    update={"content": cleaned_body}
+                                )
+                    except Exception:
+                        pass
+
+            tasks = [_enrich(idx, art) for idx, art in articles_needing_fetch]
+            await asyncio.gather(*tasks, return_exceptions=True)
+
     log.info(
         "node.preprocess.done",
-        input=len(state["raw_articles"]),
+        input=len(raw_articles),
         output=len(clean_articles),
     )
 

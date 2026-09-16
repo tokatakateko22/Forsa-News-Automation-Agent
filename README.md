@@ -111,12 +111,14 @@ All configuration lives in `.env`. Key settings:
 | `MICROSOFT_CLIENT_SECRET` | — | Azure App Registration Secret |
 | `SMTP_HOST` | — | SMTP server hostname (for `smtp`) |
 | `EMAIL_RECIPIENT` | — | Recipient email address |
-| `SCHEDULE_FREQUENCY` | `daily` | `daily \| hourly \| twice_daily \| custom_cron` |
-| `SCHEDULE_TIME` | `08:00` | Local time for daily execution |
+| `SCHEDULE_FREQUENCY` | `weekly` | `weekly \| daily \| hourly \| twice_daily \| custom_cron` |
+| `SCHEDULE_DAY_OF_WEEK` | `sun` | Day of week for weekly schedule (`sun`, `mon`, etc.) |
+| `SCHEDULE_TIME` | `08:30` | Local time for execution |
 | `TIMEZONE` | `Africa/Cairo` | Scheduling timezone |
 | `IMPORTANCE_THRESHOLD` | `60` | Minimum score (0–100) to email an event |
 | `NO_NEWS_BEHAVIOUR` | `skip` | `skip \| send_empty` |
-| `OVERLAP_HOURS` | `2` | Window overlap to catch delayed articles |
+| `OVERLAP_HOURS` | `6` | Window overlap to catch delayed articles |
+| `INITIAL_LOOKBACK_HOURS` | `168` | Lookback hours for weekly / initial run (168h = 7 days) |
 
 ---
 
@@ -159,18 +161,24 @@ Or re-run `scripts/seed_competitors.py` after editing the seed list.
 Edit `.env` only — no code changes:
 
 ```bash
-# Daily at 08:00 Cairo
+# Weekly every Sunday at 08:30 Cairo (default production schedule)
+SCHEDULE_FREQUENCY=weekly
+SCHEDULE_DAY_OF_WEEK=sun
+SCHEDULE_TIME=08:30
+INITIAL_LOOKBACK_HOURS=168
+
+# Daily at 08:30 Cairo
 SCHEDULE_FREQUENCY=daily
-SCHEDULE_TIME=08:00
+SCHEDULE_TIME=08:30
 
 # Twice daily
 SCHEDULE_FREQUENCY=twice_daily
-SCHEDULE_TIME=08:00
-SCHEDULE_TIME_2=18:00
+SCHEDULE_TIME=08:30
+SCHEDULE_TIME_2=20:00
 
-# Custom cron (every weekday at 07:30)
+# Custom cron (every Sunday at 08:30)
 SCHEDULE_FREQUENCY=custom_cron
-SCHEDULE_CRON=30 7 * * 1-5
+SCHEDULE_CRON=30 8 * * 0
 ```
 
 ---

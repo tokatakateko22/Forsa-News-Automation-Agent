@@ -32,41 +32,41 @@ async def _persist_events(events: list[NewsEvent], run_id: str) -> None:
             if not event.summary:
                 continue
             try:
-                # Upsert event record
-                event_uuid = uuid.UUID(event.event_id)
-                event_orm = EventORM(
-                    id=event_uuid,
-                    canonical_title=event.canonical_title,
-                    event_date=event.event_date,
-                    category=event.category,
-                    subcategory=event.subcategory,
-                    canonical_url=event.canonical_url,
-                    canonical_source_name=event.canonical_source_name,
-                    summary=event.summary.summary_text if event.summary else None,
-                    importance_score=event.importance_score,
-                    verification_status=event.verification_status,
-                    verification_source=event.verification_source,
-                )
-                session.add(event_orm)
-                await session.flush()
-
-                # Link articles to event
-                for article in event.articles:
-                    ea = EventArticle(
-                        event_id=event_uuid,
-                        article_id=uuid.UUID(article.article_id),
+                async with session.begin_nested():
+                    # Upsert event record
+                    event_uuid = uuid.UUID(event.event_id)
+                    event_orm = EventORM(
+                        id=event_uuid,
+                        canonical_title=event.canonical_title,
+                        event_date=event.event_date,
+                        category=event.category,
+                        subcategory=event.subcategory,
+                        canonical_url=event.canonical_url,
+                        canonical_source_name=event.canonical_source_name,
+                        summary=event.summary.summary_text if event.summary else None,
+                        importance_score=event.importance_score,
+                        verification_status=event.verification_status,
+                        verification_source=event.verification_source,
                     )
-                    session.add(ea)
-                await session.flush()
+                    session.add(event_orm)
+                    await session.flush()
 
-                # Record as sent
-                await sent_repo.record_sent(
-                    event_id=event_uuid,
-                    recipient=settings.email_recipient,
-                    run_id=run_uuid,
-                )
+                    # Link articles to event
+                    for article in event.articles:
+                        ea = EventArticle(
+                            event_id=event_uuid,
+                            article_id=uuid.UUID(article.article_id),
+                        )
+                        session.add(ea)
+                    await session.flush()
+
+                    # Record as sent
+                    await sent_repo.record_sent(
+                        event_id=event_uuid,
+                        recipient=settings.email_recipient,
+                        run_id=run_uuid,
+                    )
             except Exception as exc:
-                await session.rollback()
                 log.error(
                     "send_email.persist_failed",
                     event_id=event.event_id,

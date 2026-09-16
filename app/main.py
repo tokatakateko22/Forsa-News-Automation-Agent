@@ -66,14 +66,26 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
     wait=wait_exponential(multiplier=1, min=1, max=8),
     reraise=True,
 )
-async def _get_collection_window() -> tuple[datetime, datetime]:
+async def _get_collection_window(lookback_days: int | None = None) -> tuple[datetime, datetime]:
     """
     Determine the [start, end] window for news retrieval.
-    start = last_successful_run_time - overlap_hours
-    end   = now
-    If no prior run exists, uses initial_lookback_hours.
+    If lookback_days is passed (e.g. 7 for a weekly test), start = end - timedelta(days=lookback_days).
+    Otherwise:
+      start = last_successful_run_time - overlap_hours
+      end   = now
+    If no prior run exists, uses initial_lookback_hours (168h for weekly).
     """
     end_time = datetime.now(timezone.utc)
+
+    if lookback_days is not None:
+        start_time = end_time - timedelta(days=lookback_days)
+        log.info(
+            "window.manual_lookback",
+            days=lookback_days,
+            start_time=start_time.isoformat(),
+            end_time=end_time.isoformat(),
+        )
+        return start_time, end_time
 
     async with get_session() as session:
         run_repo = WorkflowRunRepository(session)
@@ -117,23 +129,27 @@ async def _record_run_start(run_id: uuid.UUID) -> None:
 
 # ── Pipeline runner ───────────────────────────────────────────────────────────
 
-async def run_pipeline() -> None:
+async def run_pipeline(
+    lookback_days: int | None = None,
+    ignore_already_sent: bool = False,
+) -> dict:
     """Execute a single complete pipeline run."""
     run_uuid = uuid.uuid4()
     run_id = str(run_uuid)
-    log.info("pipeline.start", run_id=run_id)
+    log.info("pipeline.start", run_id=run_id, lookback_days=lookback_days, ignore_sent=ignore_already_sent)
 
     # Create workflow_run record with automatic retry on transient network hiccups
     await _record_run_start(run_uuid)
 
     try:
-        collection_start, collection_end = await _get_collection_window()
+        collection_start, collection_end = await _get_collection_window(lookback_days=lookback_days)
 
         initial_state: AgentState = {
             "run_id": run_id,
             "started_at": datetime.now(timezone.utc),
             "collection_start": collection_start,
             "collection_end": collection_end,
+            "ignore_already_sent": ignore_already_sent,
             "raw_articles": [],
             "clean_articles": [],
             "classifications": {},
@@ -169,9 +185,11 @@ async def run_pipeline() -> None:
             events_sent=final_state.get("stats", {}).get("events_sent", 0),
             errors=final_state.get("errors", []),
         )
+        return final_state
 
     except Exception as exc:
         log.error("pipeline.fatal_error", run_id=run_id, error=str(exc), exc_info=True)
+        return {"errors": [str(exc)]}
 
 
 # ── Scheduler configuration ───────────────────────────────────────────────────
@@ -206,6 +224,15 @@ def _build_trigger() -> list[CronTrigger]:
                 minute=settings.schedule_minute_2,
                 timezone=tz,
             ),
+        ]
+    elif freq == "weekly":
+        return [
+            CronTrigger(
+                day_of_week=settings.schedule_day_of_week,
+                hour=settings.schedule_hour,
+                minute=settings.schedule_minute,
+                timezone=tz,
+            )
         ]
     elif freq == "custom_cron":
         parts = settings.schedule_cron.split()
@@ -277,6 +304,17 @@ async def main() -> None:
         help="Execute one pipeline run immediately and exit.",
     )
     parser.add_argument(
+        "--days",
+        type=int,
+        default=None,
+        help="Lookback window in days (e.g. --days 7 for past week).",
+    )
+    parser.add_argument(
+        "--ignore-sent",
+        action="store_true",
+        help="Bypass database check for already-sent articles (for testing).",
+    )
+    parser.add_argument(
         "--init-db",
         action="store_true",
         help="Initialise database tables and exit.",
@@ -291,8 +329,8 @@ async def main() -> None:
         return
 
     if args.run_now:
-        log.info("manual_run.start")
-        await run_pipeline()
+        log.info("manual_run.start", days=args.days, ignore_sent=args.ignore_sent)
+        await run_pipeline(lookback_days=args.days, ignore_already_sent=args.ignore_sent)
         await close_db()
         return
 

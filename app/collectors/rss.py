@@ -78,13 +78,15 @@ class RSSCollector(NewsSourceCollector):
         log.info("rss.fetching", url=self.feed_url, source=self.source_name)
 
         # Download feed content asynchronously
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-            response = await client.get(
-                self.feed_url,
-                headers={"User-Agent": "ForsaNewsAgent/1.0 (+https://forsaegypt.com)"},
-            )
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+            "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
+        }
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, verify=False) as client:
+            response = await client.get(self.feed_url, headers=headers)
             response.raise_for_status()
-            raw_content = response.text
+            raw_content = response.content
 
         feed = feedparser.parse(raw_content)
         articles: list[Article] = []

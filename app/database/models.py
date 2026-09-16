@@ -145,7 +145,7 @@ class Event(Base):
     event_date = Column(DateTime(timezone=True), nullable=True)
     category = Column(String(100), nullable=True)
     subcategory = Column(String(200), nullable=True)
-    canonical_url = Column(String(2048), nullable=True)
+    canonical_url = Column(Text, nullable=True)
     canonical_source_name = Column(String(200), nullable=True)
     summary = Column(Text, nullable=True, comment="LLM-generated factual summary")
     importance_score = Column(Integer, nullable=True, comment="Internal only — never emailed")
@@ -153,7 +153,7 @@ class Event(Base):
         String(50), nullable=False, default="UNVERIFIED",
         comment="VERIFIED | UNVERIFIED | OFFICIAL"
     )
-    verification_source = Column(String(500), nullable=True)
+    verification_source = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     articles = relationship("EventArticle", back_populates="event", lazy="raise")

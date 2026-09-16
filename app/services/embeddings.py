@@ -16,7 +16,11 @@ log = structlog.get_logger(__name__)
 # Ensure Gemini is configured
 genai.configure(api_key=settings.google_api_key)
 
-_EMBEDDING_MODEL = "models/text-embedding-004"
+_EMBEDDING_MODELS = [
+    "models/gemini-embedding-001",
+    "models/gemini-embedding-2",
+    "models/gemini-embedding-2-preview",
+]
 _TASK_TYPE = "SEMANTIC_SIMILARITY"
 
 # In-process cache: article_id -> embedding vector
@@ -30,18 +34,31 @@ async def get_embedding(text: str, article_id: str) -> list[float]:
     if article_id in _cache:
         return _cache[article_id]
 
-    try:
-        result = genai.embed_content(
-            model=_EMBEDDING_MODEL,
-            content=text[:2000],  # Truncate to avoid token limits
-            task_type=_TASK_TYPE,
-        )
-        embedding: list[float] = result["embedding"]
-        _cache[article_id] = embedding
-        return embedding
-    except Exception as exc:
-        log.warning("embeddings.failed", article_id=article_id, error=str(exc))
+    content = text[:2000] if text else ""
+    if not content:
         return []
+
+    for model_name in _EMBEDDING_MODELS:
+        try:
+            result = genai.embed_content(
+                model=model_name,
+                content=content,
+                task_type=_TASK_TYPE,
+            )
+            embedding: list[float] = result["embedding"]
+            _cache[article_id] = embedding
+            return embedding
+        except Exception as exc:
+            log.warning(
+                "embeddings.model_failed",
+                model=model_name,
+                article_id=article_id,
+                error=str(exc),
+            )
+            continue
+
+    log.warning("embeddings.all_failed", article_id=article_id)
+    return []
 
 
 async def get_embeddings_batch(

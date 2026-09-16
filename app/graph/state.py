@@ -47,6 +47,7 @@ class AgentState(TypedDict):
     started_at: datetime
     collection_start: datetime      # Start of the news retrieval window
     collection_end: datetime        # End of the news retrieval window (now)
+    ignore_already_sent: bool       # Bypass DB sent-events check (for testing)
 
     # ── Collection ────────────────────────────────────────────────────────────
     raw_articles: list[Article]

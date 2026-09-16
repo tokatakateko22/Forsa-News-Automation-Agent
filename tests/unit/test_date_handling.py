@@ -45,6 +45,21 @@ class TestCollectionWindow:
         article_published = datetime(2026, 9, 13, 7, 30, 0, tzinfo=timezone.utc)
         assert window_start <= article_published
 
+    def test_weekly_run_lookback(self):
+        """On weekly run, initial lookback is 168 hours (7 days)."""
+        now = datetime(2026, 9, 14, 8, 0, 0, tzinfo=timezone.utc)
+        initial_lookback = 168
+
+        expected_start = now - timedelta(hours=initial_lookback)
+        assert expected_start == datetime(2026, 9, 7, 8, 0, 0, tzinfo=timezone.utc)
+
+    def test_manual_days_lookback(self):
+        """Custom lookback_days = 7 sets start to exactly 7 days ago."""
+        now = datetime(2026, 9, 14, 8, 0, 0, tzinfo=timezone.utc)
+        days = 7
+        start = now - timedelta(days=days)
+        assert start == datetime(2026, 9, 7, 8, 0, 0, tzinfo=timezone.utc)
+
     def test_window_ordering(self):
         """start_time must always be before end_time."""
         now = datetime.now(timezone.utc)

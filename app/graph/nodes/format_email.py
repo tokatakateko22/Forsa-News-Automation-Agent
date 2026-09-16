@@ -71,6 +71,45 @@ def _format_date(dt: datetime | None) -> str:
         return dt.strftime("%d %b %Y, %H:%M UTC")
 
 
+ARABIC_COMPETITOR_MAP = {
+    "فاليو": "valU",
+    "حالا": "MNT-Halan",
+    "ام ان تي حالا": "MNT-Halan",
+    "كونتكت": "Contact Financial",
+    "أمان": "Aman",
+    "امان": "Aman",
+    "سهولة": "Souhoola",
+    "سيمبل": "Sympl",
+    "بلنك": "blnk",
+    "شهري": "Shahry",
+    "بي تك": "B.Tech",
+    "فوري": "Fawry",
+    "باي موب": "Paymob",
+    "خزنة": "Khazna",
+}
+
+
+def _format_category_label(event: NewsEvent, summary) -> str:
+    """Format category and subcategory labels strictly in English."""
+    import re
+    category_label = event.category or "Other"
+
+    if event.category == "Competitor" and getattr(summary, "competitor_name", None):
+        comp = summary.competitor_name
+        if comp in ARABIC_COMPETITOR_MAP:
+            comp = ARABIC_COMPETITOR_MAP[comp]
+        elif re.search(r"[\u0600-\u06FF]", comp):
+            comp = ""
+        if comp:
+            return f"Competitor — {comp}"
+        return "Competitor"
+
+    if event.subcategory and not re.search(r"[\u0600-\u06FF]", event.subcategory):
+        return f"{event.category} — {event.subcategory}"
+
+    return category_label
+
+
 def _event_plain_block(event: NewsEvent) -> str:
     """Plain text block for one event."""
     summary = event.summary
@@ -78,11 +117,7 @@ def _event_plain_block(event: NewsEvent) -> str:
         return ""
 
     emoji = CATEGORY_EMOJI.get(event.category, "⚪")
-    category_label = event.category
-    if event.category == "Competitor" and summary.competitor_name:
-        category_label = f"Competitor — {summary.competitor_name}"
-    elif event.subcategory:
-        category_label = f"{event.category} — {event.subcategory}"
+    category_label = _format_category_label(event, summary)
 
     lines = [
         "━" * 54,
@@ -104,11 +139,7 @@ def _event_html_block(event: NewsEvent) -> str:
         return ""
 
     emoji = CATEGORY_EMOJI.get(event.category, "⚪")
-    category_label = event.category
-    if event.category == "Competitor" and summary.competitor_name:
-        category_label = f"Competitor — {summary.competitor_name}"
-    elif event.subcategory:
-        category_label = f"{event.category} — {event.subcategory}"
+    category_label = _format_category_label(event, summary)
 
     color_map = {
         "🔴": "#e53e3e",
@@ -131,21 +162,57 @@ def _event_html_block(event: NewsEvent) -> str:
 """
 
 
+# Executive Pillars
+PILLARS = [
+    {
+        "id": "cbe",
+        "title": "Central Bank of Egypt (CBE) — Macro & Monetary Policy",
+        "emoji": "🏛️",
+        "categories": ["CBE"],
+    },
+    {
+        "id": "fra",
+        "title": "Financial Regulatory Authority (FRA) — Regulations & Market Oversight",
+        "emoji": "🔴",
+        "categories": ["FRA"],
+    },
+    {
+        "id": "competitors",
+        "title": "Competitor Intelligence & Consumer Finance",
+        "emoji": "🏢",
+        "categories": ["Competitor", "Consumer Finance", "FinTech"],
+    },
+    {
+        "id": "market",
+        "title": "Market Backdrop & Economy",
+        "emoji": "📈",
+        "categories": ["Financial Market", "Economy", "Banking", "Other"],
+    },
+]
+
+
 def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]:
     """
     Build subject, HTML body, and plain-text body from the list of events.
-    Returns (subject, html, plain).
+    Groups events into 4 executive pillars:
+      1. Central Bank of Egypt (CBE)
+      2. Financial Regulatory Authority (FRA)
+      3. Competitor Intelligence & Consumer Finance
+      4. Market Backdrop & Economy
     """
     subject = f"{settings.email_subject_prefix} — {run_date}"
 
-    # Sort events by category priority
-    def sort_key(e: NewsEvent) -> int:
-        try:
-            return CATEGORY_ORDER.index(e.category)
-        except ValueError:
-            return len(CATEGORY_ORDER)
-
-    sorted_events = sorted(events, key=sort_key)
+    # Group events by pillar
+    pillar_events: dict[str, list[NewsEvent]] = {p["id"]: [] for p in PILLARS}
+    for event in events:
+        placed = False
+        for p in PILLARS:
+            if event.category in p["categories"]:
+                pillar_events[p["id"]].append(event)
+                placed = True
+                break
+        if not placed:
+            pillar_events["market"].append(event)
 
     # ── Plain text ────────────────────────────────────────────────────────────
     plain_lines = [
@@ -153,17 +220,39 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
         f"{run_date}",
         "",
     ]
-    for event in sorted_events:
-        block = _event_plain_block(event)
-        if block:
-            plain_lines.append(block)
-            plain_lines.append("")
+    for p in PILLARS:
+        group = pillar_events[p["id"]]
+        if not group:
+            continue
+        plain_lines.append("═" * 54)
+        plain_lines.append(f"{p['emoji']} {p['title']}")
+        plain_lines.append("═" * 54)
+        plain_lines.append("")
+        for event in group:
+            block = _event_plain_block(event)
+            if block:
+                plain_lines.append(block)
+                plain_lines.append("")
+
     plain_lines.append("━" * 54)
     plain_lines.append("This is an automated news digest. Do not reply.")
     plain_body = "\n".join(plain_lines)
 
     # ── HTML ──────────────────────────────────────────────────────────────────
-    event_html = "".join(_event_html_block(e) for e in sorted_events if e.summary)
+    html_sections = []
+    for p in PILLARS:
+        group = [e for e in pillar_events[p["id"]] if e.summary]
+        if not group:
+            continue
+        section_heading = f"""
+<div style="margin:28px 0 12px 0;padding-bottom:6px;border-bottom:2px solid #2b6cb0;">
+  <h2 style="margin:0;font-size:15px;color:#2b6cb0;text-transform:uppercase;letter-spacing:0.5px;">
+    {p['emoji']} {p['title']}
+  </h2>
+</div>
+"""
+        section_body = "".join(_event_html_block(e) for e in group)
+        html_sections.append(section_heading + section_body)
 
     html_body = f"""<!DOCTYPE html>
 <html lang="en">
@@ -172,13 +261,13 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>{subject}</title>
 </head>
-<body style="font-family:Arial,Helvetica,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#2d3748;">
+<body style="font-family:Arial,Helvetica,sans-serif;max-width:720px;margin:0 auto;padding:20px;color:#2d3748;">
   <div style="border-bottom:3px solid #1a365d;padding-bottom:12px;margin-bottom:20px;">
     <h1 style="margin:0;font-size:22px;color:#1a365d;">Forsa Financial Market News</h1>
     <p style="margin:4px 0 0 0;font-size:13px;color:#718096;">{run_date}</p>
   </div>
-  {event_html}
-  <div style="border-top:1px solid #e2e8f0;margin-top:24px;padding-top:12px;
+  {"".join(html_sections)}
+  <div style="border-top:1px solid #e2e8f0;margin-top:28px;padding-top:12px;
               font-size:11px;color:#a0aec0;text-align:center;">
     Automated news digest · Do not reply
   </div>
@@ -194,7 +283,7 @@ def _build_no_news_email(run_date: str) -> tuple[str, str, str]:
     plain = (
         f"Forsa Financial Market News\n{run_date}\n\n"
         "No significant Egyptian financial or consumer-finance news was identified "
-        "in today's monitoring window.\n\n"
+        "in the monitoring window.\n\n"
         "━" * 54 + "\n"
         "Automated news digest · Do not reply"
     )
@@ -204,7 +293,7 @@ def _build_no_news_email(run_date: str) -> tuple[str, str, str]:
   <h1 style="color:#1a365d;">Forsa Financial Market News</h1>
   <p style="color:#718096;">{run_date}</p>
   <p style="color:#4a5568;">No significant Egyptian financial or consumer-finance news was
-  identified in today's monitoring window.</p>
+  identified in the monitoring window.</p>
   <p style="font-size:11px;color:#a0aec0;">Automated news digest · Do not reply</p>
 </body>
 </html>"""
@@ -218,7 +307,19 @@ async def format_email(state: AgentState) -> AgentState:
     """
     important_events = state.get("important_events", [])
     tz = pytz.timezone(settings.timezone)
-    run_date = datetime.now(tz).strftime("%d %B %Y")
+
+    col_start = state.get("collection_start")
+    col_end = state.get("collection_end")
+    is_weekly = settings.schedule_frequency == "weekly" or (
+        col_start and col_end and (col_end - col_start).total_seconds() >= 86400 * 3
+    )
+
+    if is_weekly and col_start and col_end:
+        start_str = col_start.astimezone(tz).strftime("%d %b")
+        end_str = col_end.astimezone(tz).strftime("%d %b %Y")
+        run_date = f"Weekly Digest ({start_str} – {end_str})"
+    else:
+        run_date = datetime.now(tz).strftime("%d %B %Y")
 
     if not important_events and settings.no_news_behaviour != "send_empty":
         log.info(

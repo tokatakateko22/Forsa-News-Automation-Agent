@@ -34,11 +34,11 @@ class Settings(BaseSettings):
     # ── Google Gemini (LLM) ───────────────────────────────────────────────────
     google_api_key: str = Field(..., description="Google AI API key for Gemini")
     gemini_classify_model: str = Field(
-        default="gemini-2.0-flash",
+        default="gemini-flash-latest",
         description="Gemini model used for cheap classification",
     )
     gemini_summarize_model: str = Field(
-        default="gemini-2.5-pro",
+        default="gemini-flash-latest",
         description="Gemini model used for quality summarization",
     )
 
@@ -89,17 +89,21 @@ class Settings(BaseSettings):
     )
 
     # ── Scheduling ────────────────────────────────────────────────────────────
-    schedule_frequency: Literal["daily", "hourly", "twice_daily", "custom_cron"] = Field(
-        default="daily",
+    schedule_frequency: Literal["daily", "hourly", "twice_daily", "weekly", "custom_cron"] = Field(
+        default="weekly",
         description="How often the pipeline runs",
     )
     schedule_time: str = Field(
         default="08:30",
-        description="HH:MM local time for daily / twice_daily first run",
+        description="HH:MM local time for daily / weekly / twice_daily first run",
     )
     schedule_time_2: str = Field(
         default="20:00",
         description="HH:MM local time for twice_daily second run",
+    )
+    schedule_day_of_week: str = Field(
+        default="sun",
+        description="Day of week for weekly schedule (mon, tue, wed, thu, fri, sat, sun)",
     )
     schedule_cron: str = Field(
         default="0 8 * * *",
@@ -112,12 +116,12 @@ class Settings(BaseSettings):
 
     # ── Processing Window ─────────────────────────────────────────────────────
     overlap_hours: int = Field(
-        default=2,
+        default=6,
         description="Hours of overlap before last-run time to catch delayed articles",
     )
     initial_lookback_hours: int = Field(
-        default=24,
-        description="How far back to look on the very first run (no prior timestamp)",
+        default=168,
+        description="How far back to look on the very first/test run (in hours, 168 = 7 days)",
     )
 
     # ── Filtering Thresholds ──────────────────────────────────────────────────

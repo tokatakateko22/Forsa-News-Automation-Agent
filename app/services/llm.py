@@ -13,6 +13,7 @@ Prompt-injection protection:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any
@@ -102,21 +103,78 @@ Title: {title}
 """
 
 
+FALLBACK_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    settings.gemini_summarize_model,
+    settings.gemini_classify_model,
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+]
+
+
+async def _generate_with_fallback(
+    contents: list[str],
+    generation_config: genai.GenerationConfig,
+) -> str:
+    """Generate content with automatic fallback across models if 429 quota is reached or model is unavailable."""
+    models_to_try = []
+    for m in FALLBACK_MODELS:
+        if m and m not in models_to_try:
+            models_to_try.append(m)
+
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = await model.generate_content_async(
+                contents,
+                generation_config=generation_config,
+            )
+            return response.text.strip()
+        except Exception as exc:
+            last_error = exc
+            err_str = str(exc)
+            err_lower = err_str.lower()
+            if "429" in err_str or "quota" in err_lower or "resourceexhausted" in err_lower:
+                log.warning(
+                    "llm.quota_switch",
+                    failed_model=model_name,
+                    error="Quota exceeded, switching to fallback model",
+                )
+                await asyncio.sleep(1.5)
+                continue
+            if "404" in err_str or "not found" in err_lower or "notfound" in err_lower:
+                log.warning(
+                    "llm.not_found_switch",
+                    failed_model=model_name,
+                    error="Model not found or deprecated, switching to fallback model",
+                )
+                continue
+            raise exc
+
+    if last_error:
+        raise last_error
+    return ""
+
+
 @retry(
     retry=retry_if_exception_type(Exception),
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=2, min=10, max=65),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1.5, min=4, max=30),
     reraise=False,
 )
 async def classify_article(title: str, content: str) -> dict[str, Any]:
     """
-    Classify an article using the cheap Gemini Flash model.
+    Classify an article using Gemini Flash with model fallback.
     Returns the classification dict (is_relevant, category, etc.).
     """
-    wrapped = _wrap_content(f"Title: {title}\n\nContent: {content[:2000]}")
+    wrapped = _wrap_content(f"Title: {title}\n\nContent: {content[:3000]}")
     prompt = _CLASSIFY_USER_TEMPLATE.format(title=title, wrapped_content=wrapped)
 
-    response = await _classify_model.generate_content_async(
+    raw = await _generate_with_fallback(
         [_CLASSIFY_SYSTEM, prompt],
         generation_config=genai.GenerationConfig(
             temperature=0.0,
@@ -124,7 +182,6 @@ async def classify_article(title: str, content: str) -> dict[str, Any]:
             max_output_tokens=1024,
         ),
     )
-    raw = response.text.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     try:
@@ -147,23 +204,37 @@ async def classify_article(title: str, content: str) -> dict[str, Any]:
 
 _SUMMARIZE_SYSTEM = f"""{_INJECTION_GUARD}
 
-You are a factual news summarization system for Forsa, an Egyptian consumer-finance company.
+You are an executive financial intelligence analyst for the CEO and leadership of Forsa, an Egyptian consumer-finance and Buy-Now-Pay-Later (BNPL) platform.
 
-Your ONLY job is to produce a concise, accurate summary of what happened.
+Your job is to produce a fact-dense, actionable executive summary of the news article for senior management.
 
-STRICT RULES — violations are unacceptable:
-1. Summarize ONLY what is explicitly stated in the source article.
-2. Do NOT infer, predict, or speculate.
-3. Do NOT include business impact analysis.
-4. Do NOT include "why this matters to Forsa".
-5. Do NOT include recommended actions.
-6. Do NOT include strategic implications.
-7. Do NOT include investment advice.
-8. Do NOT include opinions.
-9. Use factual, neutral language.
-10. Answer ONLY: What happened? Who did what? What was announced?
+OUTPUT REQUIREMENTS:
+- OUTPUT LANGUAGE: 100% ENGLISH ONLY.
+- Write the entire executive summary strictly in fluent, professional English (accurately translating all Arabic sources, regulatory decisions, legal terms, numbers, and dates into English).
+- NEVER output any Arabic script or characters.
+- Output ONLY the executive summary text. Do NOT output any preambles, greetings, checklists, or self-evaluations (such as "English? Yes", "Here is the summary:", or "Understood"). Start immediately with the first sentence of the factual news summary.
 
-Format: 2-4 concise sentences. Plain text. No bullet points. No markdown.
+
+RULES & PRIORITIES:
+1. FOCUS ON CONCRETE FACTS & STRATEGIC CONTEXT:
+   - Identify exact actions, regulatory decrees/circulars, numbers, inflation/CPI rates, interest rates, capital/bond values (in EGP/USD), and effective dates.
+   - Name all relevant institutions and companies (e.g. CBE, FRA, CAPMAS, ValU, MNT-Halan, Contact, Aman, Souhoola, Sympl, I-Score, etc.).
+   - Explicitly highlight direct business implications for Forsa and the Egyptian Consumer Finance / BNPL sector:
+     * Macro & Monetary Policy: Inflation trends, CBE interest rate expectations, wholesale funding costs, and consumer purchasing power.
+     * Regulatory & Compliance: Note mandatory deadlines, direct compliance obligations (e.g., real-time I-Score reporting integration), or governance mandates.
+     * Credit & Underwriting: Note debt-to-income caps (e.g., 50% instalment cap), cash financing limits (e.g., EGP 50k), or interest rate corridor impacts on cost of funds.
+     * Market Risk & Enforcement: Note regulatory enforcement actions or fraud case studies as cautionary benchmarks for risk and credit operations.
+     * Competitive Positioning: Note competitors' capital rounds, EGX listings, merchant partnerships, or financing offers (0% interest, tenure).
+2. SUBSTANCE & STUB CHECK:
+   - If the source text contains factual data (such as inflation rates, CPI figures, monetary decisions, commercial partnerships, or regulatory decisions), ALWAYS provide a full summary.
+   - Only return "NO_SUBSTANCE" if the input is completely empty or completely devoid of any news, figures, announcements, or business information.
+   - NEVER write meta-summaries explaining that the source lacks information (e.g., do NOT write "The provided source text contains only the title without disclosing any figures..."). If an item lacks any actionable details or facts, reply ONLY with "NO_SUBSTANCE".
+3. OBJECTIVE & EXECUTIVE:
+   - Summarize strictly what occurred in the source text with authoritative, professional language.
+   - Do NOT add speculation or generic conversational filler.
+4. STRUCTURE:
+   - 2 to 4 concise, informative sentences.
+   - Plain text, no bullet points, no markdown headers.
 """
 
 _SUMMARIZE_USER_TEMPLATE = """Summarize this news article factually:
@@ -178,12 +249,13 @@ Source: {source}
 @retry(
     retry=retry_if_exception_type(Exception),
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=15),
+    wait=wait_exponential(multiplier=1.5, min=3, max=20),
 )
 async def summarize_article(title: str, content: str, source: str) -> str:
     """
-    Generate a factual summary using the quality Gemini Pro model.
+    Generate a factual summary using Gemini with model fallback.
     Called ONLY for articles that have passed all filters.
+    Always returns 100% executive English.
     """
     wrapped = _wrap_content(content[:4000])
     prompt = _SUMMARIZE_USER_TEMPLATE.format(
@@ -192,14 +264,62 @@ async def summarize_article(title: str, content: str, source: str) -> str:
         wrapped_content=wrapped,
     )
 
-    response = await _summarize_model.generate_content_async(
+    summary = await _generate_with_fallback(
         [_SUMMARIZE_SYSTEM, prompt],
         generation_config=genai.GenerationConfig(
             temperature=0.1,
             max_output_tokens=1024,
         ),
     )
-    summary = response.text.strip()
+    summary = summary.strip()
+
+    # Clean leading artifact punctuation if any model leaked reasoning traces (e.g. ')?* ', ')* ', '(?* ')
+    summary = re.sub(r"^[\s\)\?\*\#\-\_\(\]\[]+", "", summary).strip()
+
+    # Strip step headers like "5. **Final Polish:**" or "**Summary:**" or "1. Draft:"
+    summary = re.sub(r"^(?:\d+[\.\)]\s*(?:\*\*)?[A-Za-z\s]+(?:\*\*)?[:\-\s]+)+", "", summary, flags=re.IGNORECASE).strip()
+    summary = re.sub(r"^(?:\*\*)?(?:final polish|executive summary|summary|overview|factual summary|draft)(?:\*\*)?[:\s\-]+", "", summary, flags=re.IGNORECASE).strip()
+
+    # Strip any leaked checklist or evaluation lines (e.g. '100% professional English? Yes...', '* Concrete facts? Yes...')
+    if "?" in summary and re.search(r"\b(?:yes|no)\b", summary, re.IGNORECASE):
+        cleaned_lines = []
+        for line in summary.splitlines():
+            line_str = line.strip()
+            # Drop lines like "English? Yes", "Concrete facts? Yes (CBE...)", "100% English? Yes"
+            if re.search(r"\?\s*(?:yes|no)\b", line_str, re.IGNORECASE):
+                continue
+            if line_str:
+                cleaned_lines.append(line_str)
+        summary = "\n".join(cleaned_lines).strip()
+
+    # Strip any residual leading prompt artifact if line began with checklist leftover
+    summary = re.sub(r"^(?:yes|no)[\s\)\,\.\:\-]+", "", summary, flags=re.IGNORECASE).strip()
+    summary = re.sub(r"^[\s\)\?\*\#\-\_\(\]\[]+", "", summary).strip()
+    summary = re.sub(r"^(?:\*\*)?(?:final polish|executive summary|summary|overview|factual summary|draft)(?:\*\*)?[:\s\-]+", "", summary, flags=re.IGNORECASE).strip()
+
+    # Safety check: if output contains Arabic characters, translate to English
+    if re.search(r"[\u0600-\u06FF]", summary):
+        log.warning("llm.summarize.arabic_detected", action="translating_to_english")
+        trans_prompt = (
+            "Translate the following financial news summary into 100% fluent, executive English. "
+            "Preserve all facts, figures, dates, and regulatory decrees. "
+            "Do NOT output any Arabic characters. Return ONLY the executive English translation:\n\n"
+            f"{summary}"
+        )
+        try:
+            english_summary = await _generate_with_fallback(
+                [trans_prompt],
+                generation_config=genai.GenerationConfig(
+                    temperature=0.0,
+                    max_output_tokens=1024,
+                ),
+            )
+            english_summary = re.sub(r"^[\s\)\?\*\#\-\_\(\]\[]+", "", english_summary).strip()
+            if english_summary and len(english_summary) > 20:
+                summary = english_summary
+        except Exception as exc:
+            log.warning("llm.summarize.translation_failed", error=str(exc))
+
     log.debug("llm.summarize.success", length=len(summary))
     return summary
 
@@ -256,7 +376,7 @@ async def score_importance(title: str, content: str, category: str) -> dict[str,
         wrapped_content=wrapped,
     )
 
-    response = await _classify_model.generate_content_async(
+    raw = await _generate_with_fallback(
         [_IMPORTANCE_SYSTEM, prompt],
         generation_config=genai.GenerationConfig(
             temperature=0.0,
@@ -264,7 +384,6 @@ async def score_importance(title: str, content: str, category: str) -> dict[str,
             max_output_tokens=512,
         ),
     )
-    raw = response.text.strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     try:

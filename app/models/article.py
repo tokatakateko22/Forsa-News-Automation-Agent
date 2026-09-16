@@ -50,6 +50,16 @@ class Article(BaseModel):
         clean = parsed._replace(query=urlencode(clean_params))
         return clean.geturl()
 
+    @property
+    def is_english(self) -> bool:
+        """Check if article is written in English."""
+        import re
+        if re.search(r"[\u0600-\u06FF]", self.title or ""):
+            return False
+        if re.search(r"[a-zA-Z]", self.title or ""):
+            return True
+        return self.language == "en"
+
     @model_validator(mode="after")
     def compute_hash(self) -> "Article":
         """SHA-256 of normalised title + content for exact deduplication."""

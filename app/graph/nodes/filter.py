@@ -34,7 +34,7 @@ async def _score_event(event: NewsEvent) -> NewsEvent:
         return event
 
     async with _SEMAPHORE:
-        await asyncio.sleep(12.0)  # Pacing for Gemini free tier
+        await asyncio.sleep(2.0)  # Pacing for Gemini
         try:
             scores = await llm.score_importance(
                 title=event.canonical_title,
@@ -52,6 +52,24 @@ async def _score_event(event: NewsEvent) -> NewsEvent:
     return event
 
 
+def _has_substance(event: NewsEvent) -> bool:
+    """Validate that the event has sufficient concrete content and is in scope for a CEO."""
+    from app.graph.nodes.classify import _EXCLUSION_RE
+    if _EXCLUSION_RE.search(event.canonical_title):
+        return False
+
+    # Check total length of content across articles
+    total_content = " ".join((a.content or "") for a in event.articles).strip()
+    # If the combined content across all articles is under 80 characters, drop as an unsubstantiated stub
+    if len(total_content) < 80:
+        return False
+
+    if event.category == "Other":
+        return False
+
+    return True
+
+
 async def filter_important_news(state: AgentState) -> AgentState:
     """
     LangGraph node: filter_important_news
@@ -65,10 +83,10 @@ async def filter_important_news(state: AgentState) -> AgentState:
     tasks = [_score_event(e) for e in events]
     scored_events = await asyncio.gather(*tasks)
 
-    # Apply importance threshold
+    # Apply importance threshold and executive substance check
     above_threshold = [
         e for e in scored_events
-        if e.importance_score >= settings.importance_threshold
+        if e.importance_score >= settings.importance_threshold and _has_substance(e)
     ]
     log.info(
         "node.filter.threshold",
@@ -78,27 +96,29 @@ async def filter_important_news(state: AgentState) -> AgentState:
     )
 
     # Check DB for already-sent events (idempotency guard)
+    ignore_already_sent = state.get("ignore_already_sent", False)
     important_events: list[NewsEvent] = []
     async with get_session() as session:
         sent_repo = SentNewsRepository(session)
         for event in above_threshold:
-            try:
-                article_urls = [a.url for a in event.articles if a.url]
-                already = await sent_repo.is_event_already_sent(
-                    event_id=uuid.UUID(event.event_id) if event.event_id else None,
-                    canonical_url=event.canonical_url,
-                    canonical_title=event.canonical_title,
-                    article_urls=article_urls,
-                )
-                if already:
-                    log.info(
-                        "filter.already_sent",
-                        event_id=event.event_id,
-                        title=event.canonical_title[:60],
+            if not ignore_already_sent:
+                try:
+                    article_urls = [a.url for a in event.articles if a.url]
+                    already = await sent_repo.is_event_already_sent(
+                        event_id=uuid.UUID(event.event_id) if event.event_id else None,
+                        canonical_url=event.canonical_url,
+                        canonical_title=event.canonical_title,
+                        article_urls=article_urls,
                     )
-                    continue
-            except Exception as exc:
-                log.warning("filter.db_check_failed", error=str(exc))
+                    if already:
+                        log.info(
+                            "filter.already_sent",
+                            event_id=event.event_id,
+                            title=event.canonical_title[:60],
+                        )
+                        continue
+                except Exception as exc:
+                    log.warning("filter.db_check_failed", error=str(exc))
 
             event.should_send = True
             important_events.append(event)

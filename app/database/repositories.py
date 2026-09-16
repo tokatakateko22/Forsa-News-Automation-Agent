@@ -113,7 +113,14 @@ class ArticleRepository:
         result = await self._s.execute(
             select(Article.id).where(Article.url == url).limit(1)
         )
-        return result.scalar_one_or_none()
+    async def get_existing_url_map(self, urls: list[str]) -> dict[str, uuid.UUID]:
+        """Batch lookup URLs to IDs in a single query."""
+        if not urls:
+            return {}
+        result = await self._s.execute(
+            select(Article.url, Article.id).where(Article.url.in_(urls))
+        )
+        return {row[0]: row[1] for row in result.all()}
 
     async def exists_by_hash(self, content_hash: str) -> bool:
         result = await self._s.execute(

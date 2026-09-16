@@ -83,67 +83,67 @@ SOURCES: list[dict] = [
         "language": "en",
         "category_hint": "General",
     },
+    # ── Tier 2: Reputable Financial Media & Feeds ────────────────────────────
     {
-        "name": "Zawya Egypt",
-        "url": "https://www.zawya.com/en/",
+        "name": "Al Borsa News",
+        "url": "https://alborsaanews.com/feed/",
         "source_type": "rss",
         "tier": 2,
-        "priority": 25,
-        "language": "en",
-        "category_hint": "General",
-    },
-    {
-        "name": "Enterprise Egypt",
-        "url": "https://enterprise.press/",
-        "source_type": "rss",
-        "tier": 2,
-        "priority": 25,
-        "language": "en",
-        "category_hint": "General",
-    },
-    {
-        "name": "Amwal Al Ghad",
-        "url": "https://amwalalghad.com/",
-        "source_type": "rss",
-        "tier": 2,
-        "priority": 25,
+        "priority": 15,
         "language": "ar",
-        "category_hint": "General",
+        "category_hint": "Financial Market",
     },
     {
-        "name": "Daily News Egypt",
-        "url": "https://dailynewsegypt.com/",
+        "name": "Hapi Journal",
+        "url": "https://hapijournal.com/feed/",
         "source_type": "rss",
         "tier": 2,
-        "priority": 30,
-        "language": "en",
-        "category_hint": "General",
+        "priority": 15,
+        "language": "ar",
+        "category_hint": "Banking",
     },
     {
-        "name": "The Business Monthly",
-        "url": "https://businessmonthly.net/",
+        "name": "Economy Plus",
+        "url": "https://economyplusme.com/feed/",
         "source_type": "rss",
         "tier": 2,
-        "priority": 30,
-        "language": "en",
-        "category_hint": "General",
-    },
-    # RSS feed URLs for Tier 2 sources (where available)
-    {
-        "name": "Enterprise Egypt RSS",
-        "url": "https://enterprise.press/feed/",
-        "source_type": "rss",
-        "tier": 2,
-        "priority": 25,
-        "language": "en",
-        "category_hint": "General",
+        "priority": 20,
+        "language": "ar",
+        "category_hint": "Economy",
     },
     {
         "name": "Daily News Egypt RSS",
         "url": "https://dailynewsegypt.com/feed/",
         "source_type": "rss",
         "tier": 2,
-        "priority": 30,
+        "priority": 25,
+        "language": "en",
+        "category_hint": "General",
+    },
+    {
+        "name": "EnterpriseAM RSS",
+        "url": "https://enterpriseam.com/feed/",
+        "source_type": "rss",
+        "tier": 2,
+        "priority": 15,
+        "language": "en",
+        "category_hint": "General",
+    },
+    {
+        "name": "ME Observer Financial RSS",
+        "url": "https://meobserver.news/business-economix/market-updates-finance/feed/",
+        "source_type": "rss",
+        "tier": 2,
+        "priority": 15,
+        "language": "en",
+        "category_hint": "Financial Market",
+    },
+    {
+        "name": "Egypt Independent RSS",
+        "url": "https://www.egyptindependent.com/feed/",
+        "source_type": "rss",
+        "tier": 2,
+        "priority": 25,
         "language": "en",
         "category_hint": "General",
     },
@@ -163,6 +163,7 @@ async def seed_sources() -> None:
     print("Seeding sources...")
     async with get_session() as session:
         repo = SourceRepository(session)
+        active_names = {s["name"] for s in SOURCES}
         created = 0
         updated = 0
         for s in SOURCES:
@@ -177,7 +178,15 @@ async def seed_sources() -> None:
             else:
                 session.add(source_obj)
                 created += 1
-    print(f"Done — {created} created, {updated} updated.")
+
+        all_active = await repo.get_active_sources()
+        deactivated = 0
+        for src in all_active:
+            if src.name not in active_names:
+                src.active = False
+                deactivated += 1
+
+    print(f"Done — {created} created, {updated} updated, {deactivated} deactivated.")
 
 
 if __name__ == "__main__":

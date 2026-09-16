@@ -1,0 +1,71 @@
+name: Weekly Financial News Digest
+
+on:
+  schedule:
+    # 05:30 UTC = 08:30 AM Africa/Cairo time (UTC+3)
+    # 0 = Sunday (beginning of the Egyptian business week)
+    - cron: '30 5 * * 0'
+  workflow_dispatch:
+    # Allows manual triggering from the GitHub Actions tab anytime with custom parameters
+    inputs:
+      lookback_days:
+        description: 'Number of days to look back for news'
+        required: false
+        default: '7'
+      ignore_sent:
+        description: 'Bypass database check for already-sent articles (for testing)'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Weekly News Agent Pipeline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_CLASSIFY_MODEL: ${{ vars.GEMINI_CLASSIFY_MODEL || 'gemini-flash-latest' }}
+          GEMINI_SUMMARIZE_MODEL: ${{ vars.GEMINI_SUMMARIZE_MODEL || 'gemini-flash-latest' }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER || 'power_automate' }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM || 'toka.ibrahim@Drive-Finance.Com' }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT || 'toka.ibrahim@Drive-Finance.Com' }}
+          POWER_AUTOMATE_WEBHOOK_URL: ${{ secrets.POWER_AUTOMATE_WEBHOOK_URL }}
+          SCHEDULE_FREQUENCY: weekly
+          SCHEDULE_DAY_OF_WEEK: sun
+          SCHEDULE_TIME: "08:30"
+          TIMEZONE: "Africa/Cairo"
+          OVERLAP_HOURS: "6"
+          INITIAL_LOOKBACK_HOURS: "168"
+          IMPORTANCE_THRESHOLD: "60"
+          NO_NEWS_BEHAVIOUR: "skip"
+          ENVIRONMENT: "production"
+        run: |
+          FLAGS="--run-now"
+          if [ -n "${{ inputs.lookback_days }}" ]; then
+            FLAGS="$FLAGS --days ${{ inputs.lookback_days }}"
+          else
+            FLAGS="$FLAGS --days 7"
+          fi
+          if [ "${{ inputs.ignore_sent }}" = "true" ]; then
+            FLAGS="$FLAGS --ignore-sent"
+          fi
+          python app/main.py $FLAGS
