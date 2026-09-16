@@ -52,6 +52,27 @@ async def _score_event(event: NewsEvent) -> NewsEvent:
     return event
 
 
+_FRA_CONSUMER_FINANCE_TERMS = [
+    "consumer finance", "consumer credit", "retail lending", "bnpl", "buy now pay later",
+    "installment", "instalment", "i-score", "iscore", "credit reporting", "credit bureau",
+    "otp", "e-kyc", "ekyc", "debt burden", "microfinance", "sme finance",
+    "behavioural analysis", "behavioral analysis", "credit scoring",
+    "تمويل استهلاكي", "تمويل الاستهلاك", "تمويل استهلاك", "تمويل الافراد", "تمويل أفراد", "تقسيط", "التقسيط",
+    "الشراء الآن والدفع لاحقاً", "الشراء الان والدفع لاحقا",
+    "اي سكور", "آي سكور", "استعلام ائتماني", "الربط اللحظي",
+    "رمز التحقق", "التحقق من هوية العملاء", "التحقق من هويه العملاء",
+    "سقف عبء الدين", "عبء الدين",
+    "تمويل المشروعات المتوسطة والصغيرة", "تمويل المشروعات المتوسطه والصغيره", "متناهي الصغر",
+    "التحليل السلوكي",
+    "فاليو", "حالا", "كونتكت", "أمان", "امان", "سهولة", "سهوله", "سيمبل", "بلنك", "فرصة", "فرصه", "أولين", "اولين",
+]
+
+
+def _is_fra_consumer_finance(text: str) -> bool:
+    norm = text.lower()
+    return any(term in norm for term in _FRA_CONSUMER_FINANCE_TERMS)
+
+
 def _has_substance(event: NewsEvent) -> bool:
     """Validate that the event has sufficient concrete content and is in scope for a CEO."""
     from app.graph.nodes.classify import _EXCLUSION_RE
@@ -66,6 +87,12 @@ def _has_substance(event: NewsEvent) -> bool:
 
     if event.category == "Other":
         return False
+
+    # Strictly enforce that FRA news must be related to consumer financing
+    if event.category == "FRA":
+        combined_text = f"{event.canonical_title} {total_content}"
+        if not _is_fra_consumer_finance(combined_text):
+            return False
 
     return True
 

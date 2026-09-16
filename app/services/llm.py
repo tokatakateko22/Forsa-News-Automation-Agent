@@ -70,7 +70,7 @@ Your task: analyse the provided article and return a JSON classification strictl
 
 Monitoring scope & categories:
 - Central Bank of Egypt (CBE): monetary policy, interest rates (corridor, lending/deposit rates), MPC decisions, banking regulations, liquidity
-- Financial Regulatory Authority (FRA): consumer-finance regulations, circulars, licensing, non-bank financial institution (NBFI/NBFS) rules, securitization approvals, e-KYC/e-signature mandates
+- Financial Regulatory Authority (FRA): STRICTLY consumer-finance regulations, circulars, licensing, I-Score / credit bureau integration rules, customer identity/OTP verification, debt burden caps, and consumer credit oversight. Non-consumer real estate conferences, routine administrative decrees, or general insurance are NOT relevant for FRA.
 - Consumer Finance: BNPL, installments, consumer credit, retail lending, purchasing power, I-Score / credit reporting, debt recovery, delinquency rates
 - Competitor: news about Egyptian consumer finance & BNPL players (valU, MNT-Halan, Contact Financial, Aman, Souhoola, Sympl, blnk, Premium Card, B.Tech, Shahry, Khazna, Fawry, etc.)
 - FinTech: Egyptian fintech companies, digital lending, payments, InstaPay, mobile wallets, alternative credit scoring

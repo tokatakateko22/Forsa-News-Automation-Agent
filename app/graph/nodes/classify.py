@@ -181,16 +181,22 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
 
     # 1. Official Regulators (Tier 1)
     if any(k in src for k in ["Financial Regulatory Authority", "FRA", "الرقابة المالية"]):
-        fra_in_scope = [
-            "تمويل", "استهلاك", "متناهي الصغر", "توريق", "تكنولوجيا ماليه", "fintech", "قرار",
-            "قرارات", "إلزام", "الزام", "ضوابط", "سوق المال", "بورصه", "اي سكور", "آي سكور", "i-score",
-            "non-bank", "nbfi", "nbfs", "consumer finance", "microfinance", "securit", "تأمين علي عملاء", "تامين علي عملاء"
+        fra_consumer_finance_scope = [
+            "تمويل استهلاكي", "تمويل الاستهلاك", "تمويل استهلاك", "تمويل الافراد", "تمويل أفراد",
+            "consumer finance", "consumer credit", "retail lending",
+            "تقسيط", "التقسيط", "الشراء الان والدفع لاحقا", "الشراء الآن والدفع لاحقاً", "bnpl", "buy now pay later",
+            "اي سكور", "آي سكور", "i-score", "iscore", "استعلام ائتماني", "الربط اللحظي",
+            "رمز التحقق", "otp", "التحقق من هويه العملاء", "التحقق من هوية العملاء", "e-kyc", "ekyc",
+            "سقف عبء الدين", "عبء الدين", "debt burden",
+            "تمويل المشروعات المتوسطه والصغيره", "تمويل المشروعات المتوسطة والصغيرة", "متناهي الصغر", "microfinance",
+            "التحليل السلوكي", "behavioural analysis", "behavioral analysis", "credit scoring",
+            "فاليو", "حالا", "كونتكت", "امان", "أمان", "سهوله", "سهولة", "سيمبل", "بلنك", "فرصه", "فرصة", "اولين", "أولين",
         ]
-        if any(term in norm_text for term in fra_in_scope):
+        if any(term in norm_text for term in fra_consumer_finance_scope):
             return ArticleClassification(
                 article_id=article.article_id,
                 category="FRA",
-                subcategory="Regulatory Decision",
+                subcategory="Consumer Finance Regulation",
                 entities=["Financial Regulatory Authority"],
                 is_relevant=True,
                 importance_score=95,
@@ -201,9 +207,10 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
             return ArticleClassification(
                 article_id=article.article_id,
                 category="FRA",
+                subcategory="Other Regulatory News",
                 is_relevant=False,
-                importance_score=30,
-                relevance_score=30,
+                importance_score=20,
+                relevance_score=20,
                 confidence=0.9,
             )
 
@@ -235,7 +242,11 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
             )
 
     # 2. FRA Decisions, Supervisory Manuals, and Enforcement Actions
-    if any(k in norm_text for k in ["جلوبال بارادايم", "global paradigm", "اولين", "ollin", "جلوبال كورب", "globalcorp"]):
+    is_ollin_enforcement = (
+        any(k in norm_text for k in ["جلوبال بارادايم", "global paradigm", "جلوبال كورب", "globalcorp", "شركة اولين", "شركة أولين", "اولين للتمويل", "أولين للتمويل"])
+        or bool(re.search(r"\b(?:ollin|globalcorp)\b", article.title + " " + (article.content or ""), re.I))
+    )
+    if is_ollin_enforcement:
         return ArticleClassification(
             article_id=article.article_id,
             category="FRA",
@@ -262,12 +273,12 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         )
 
     if any(k in norm_text for k in ["الرقابه الماليه", "fra"]) and any(
-        k in norm_title for k in ["الرقابه الماليه", "fra", "تمويل استهلاكي", "consumer finance", "اي سكور", "i-score", "credit reporting", "وثائق التأمين", "وثائق التامين"]
+        k in norm_title for k in ["تمويل استهلاكي", "consumer finance", "اي سكور", "i-score", "credit reporting", "عبء الدين", "سقف عبء الدين", "رمز التحقق", "otp"]
     ):
         return ArticleClassification(
             article_id=article.article_id,
             category="FRA",
-            subcategory="Regulatory Decision",
+            subcategory="Consumer Finance Regulation",
             entities=["Financial Regulatory Authority"],
             is_relevant=True,
             importance_score=95,
