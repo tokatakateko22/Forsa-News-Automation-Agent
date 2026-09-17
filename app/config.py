@@ -42,8 +42,16 @@ class Settings(BaseSettings):
         description="Gemini model used for quality summarization",
     )
 
-    # ── SerpAPI ───────────────────────────────────────────────────────────────
+    # ── SerpAPI & Search Fallback ─────────────────────────────────────────────
     serpapi_key: str = Field(..., description="SerpAPI key for Google News searches")
+    force_search_fallback: bool = Field(
+        default=False,
+        description="Force fallback search even if SerpAPI has quota (useful for testing)",
+    )
+    serpapi_min_searches: int = Field(
+        default=5,
+        description="Minimum searches required to attempt SerpAPI; below this switches to fallback",
+    )
 
     # ── Email Delivery ────────────────────────────────────────────────────────
     email_provider: Literal["smtp", "microsoft365", "power_automate"] = Field(

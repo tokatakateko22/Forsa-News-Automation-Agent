@@ -16,8 +16,6 @@ import structlog
 from app.collectors.base import NewsSourceCollector
 from app.collectors.cbe import CBECollector
 from app.collectors.fra import FRACollector
-from app.collectors.rss import RSSCollector
-from app.collectors.search import SerpAPICollector, SerpAPICompetitorCollector
 from app.config import settings
 from app.database.connection import get_session
 from app.database.models import Article as ArticleORM
@@ -28,67 +26,18 @@ from app.database.repositories import (
 )
 from app.graph.state import AgentState
 from app.models.article import Article
+from app.search import SearchManager, deduplicate_articles
 
 log = structlog.get_logger(__name__)
-
-
-async def _build_collectors(
-    start_time: datetime,
-    end_time: datetime,
-) -> list[NewsSourceCollector]:
-    """
-    Dynamically build collector instances from the database configuration.
-    Competitors and RSS sources are read from DB — no hard-coding.
-    """
-    collectors: list[NewsSourceCollector] = []
-
-    # ── Tier 1: Official scrapers ─────────────────────────────────────────────
-    collectors.append(CBECollector(timeout=settings.http_timeout_seconds))
-    collectors.append(FRACollector(timeout=settings.http_timeout_seconds))
-
-    # ── Tier 2: Category search via SerpAPI ───────────────────────────────────
-    collectors.append(SerpAPICollector(timeout=settings.http_timeout_seconds))
-
-    # ── Tier 2: RSS feeds from DB ─────────────────────────────────────────────
-    async with get_session() as session:
-        source_repo = SourceRepository(session)
-        sources = await source_repo.get_active_sources()
-
-        rss_sources = [s for s in sources if s.source_type == "rss"]
-        for src in rss_sources:
-            collectors.append(
-                RSSCollector(
-                    feed_url=src.url,
-                    source_name=src.name,
-                    source_tier=src.tier,
-                    source_id=src.id,
-                    language=src.language,
-                    timeout=settings.http_timeout_seconds,
-                )
-            )
-
-        # ── Competitor-specific searches (Priority 1 direct competitors) ──────
-        competitor_repo = CompetitorRepository(session)
-        competitors = await competitor_repo.get_active_competitors()
-        p1_competitors = [c for c in competitors if c.priority == 1]
-
-    for comp in p1_competitors:
-        collectors.append(
-            SerpAPICompetitorCollector(
-                competitor_name=comp.name,
-                aliases=comp.aliases or [],
-                timeout=settings.http_timeout_seconds,
-            )
-        )
-
-    return collectors
 
 
 async def collect_news(state: AgentState) -> AgentState:
     """
     LangGraph node: collect_news
-    Runs all collectors concurrently; one failed source does not abort the run.
-    Persists new articles to DB. Returns deduplicated list of Article objects.
+    Collects articles from:
+      1. Tier 1 Official scrapers (CBE, FRA)
+      2. SearchManager (SerpAPI Google News & Competitors, with automatic RSS & Web Scraping fallback)
+    Runs concurrently; persists new articles to DB. Returns deduplicated Article objects.
     """
     log.info(
         "node.collect_news.start",
@@ -100,17 +49,64 @@ async def collect_news(state: AgentState) -> AgentState:
     start_time = state["collection_start"]
     end_time = state["collection_end"]
     errors: list[str] = list(state.get("errors", []))
+    force_fallback = state.get("force_search_fallback", False) or settings.force_search_fallback
+
+    # 1. Prepare Tier 1 Official scrapers
+    cbe_collector = CBECollector(timeout=settings.http_timeout_seconds)
+    fra_collector = FRACollector(timeout=settings.http_timeout_seconds)
+
+    # 2. Retrieve competitors and RSS sources from DB for search / fallback
+    competitor_terms: list[str] = []
+    competitor_objects: list[dict] = []
+    db_rss_sources: list[dict] = []
 
     try:
-        collectors = await _build_collectors(start_time, end_time)
-    except Exception as exc:
-        msg = f"Failed to build collectors: {exc}"
-        log.error("node.collect_news.build_failed", error=msg)
-        errors.append(msg)
-        return {**state, "raw_articles": [], "errors": errors}
+        async with get_session() as session:
+            comp_repo = CompetitorRepository(session)
+            competitors = await comp_repo.get_active_competitors()
+            for comp in competitors:
+                competitor_terms.append(comp.name)
+                for alias in (comp.aliases or []):
+                    if alias and alias not in competitor_terms:
+                        competitor_terms.append(alias)
+                if comp.priority == 1:
+                    competitor_objects.append({
+                        "name": comp.name,
+                        "aliases": comp.aliases or [],
+                    })
 
-    # Run all collectors concurrently
-    tasks = [c.safe_fetch(start_time, end_time) for c in collectors]
+            source_repo = SourceRepository(session)
+            sources = await source_repo.get_active_sources()
+            for src in sources:
+                if src.source_type == "rss":
+                    db_rss_sources.append({
+                        "id": src.id,
+                        "name": src.name,
+                        "url": src.url,
+                        "tier": src.tier,
+                        "language": src.language,
+                    })
+    except Exception as exc:
+        log.warning("node.collect_news.db_load_warning", error=str(exc))
+
+    # 3. Instantiate SearchManager (with automated SerpAPI availability check & fallback)
+    search_manager = SearchManager(
+        timeout=settings.http_timeout_seconds,
+        force_fallback=force_fallback,
+    )
+
+    # 4. Run official collectors and search manager concurrently
+    tasks = [
+        cbe_collector.safe_fetch(start_time, end_time),
+        fra_collector.safe_fetch(start_time, end_time),
+        search_manager.collect_news(
+            start_time=start_time,
+            end_time=end_time,
+            competitor_names=competitor_terms,
+            competitor_objects=competitor_objects,
+            db_rss_sources=db_rss_sources,
+        ),
+    ]
     results = await asyncio.gather(*tasks, return_exceptions=False)
 
     all_articles: list[Article] = []
@@ -122,20 +118,8 @@ async def collect_news(state: AgentState) -> AgentState:
         count=len(all_articles),
     )
 
-    # URL-level deduplication before storing
-    seen_urls: set[str] = set()
-    seen_hashes: set[str] = set()
-    unique_articles: list[Article] = []
-
-    for article in all_articles:
-        if article.url in seen_urls:
-            continue
-        if article.content_hash and article.content_hash in seen_hashes:
-            continue
-        seen_urls.add(article.url)
-        if article.content_hash:
-            seen_hashes.add(article.content_hash)
-        unique_articles.append(article)
+    # Multi-level deduplication (URL, normalized title, content hash)
+    unique_articles = deduplicate_articles(all_articles)
 
     log.info(
         "node.collect_news.unique",

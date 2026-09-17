@@ -47,6 +47,11 @@ async def main() -> None:
         action="store_true",
         help="Bypass database check for already-sent articles (useful for testing).",
     )
+    parser.add_argument(
+        "--force-fallback",
+        action="store_true",
+        help="Bypass SerpAPI and force fallback retrieval (useful for testing).",
+    )
     args = parser.parse_args()
 
     effective_days = 1 if args.today else args.days
@@ -56,11 +61,16 @@ async def main() -> None:
     print(f"Schedule Mode:     {settings.schedule_frequency.upper()}")
     print(f"Lookback Window:   {'TODAY ONLY (Last 24h)' if args.today or effective_days == 1 else f'{effective_days} days'}")
     print(f"Ignore Sent News:  {args.ignore_sent}")
+    print(f"Force Fallback:    {args.force_fallback}")
     print(f"Recipient:         {settings.email_recipient}")
     print("=" * 65)
     print("Starting pipeline run...")
     try:
-        await run_pipeline(lookback_days=effective_days, ignore_already_sent=args.ignore_sent)
+        await run_pipeline(
+            lookback_days=effective_days,
+            ignore_already_sent=args.ignore_sent,
+            force_fallback=args.force_fallback,
+        )
     finally:
         await close_db()
     print("Done.")

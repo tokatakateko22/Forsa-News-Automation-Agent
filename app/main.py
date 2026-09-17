@@ -132,11 +132,18 @@ async def _record_run_start(run_id: uuid.UUID) -> None:
 async def run_pipeline(
     lookback_days: int | None = None,
     ignore_already_sent: bool = False,
+    force_fallback: bool = False,
 ) -> dict:
     """Execute a single complete pipeline run."""
     run_uuid = uuid.uuid4()
     run_id = str(run_uuid)
-    log.info("pipeline.start", run_id=run_id, lookback_days=lookback_days, ignore_sent=ignore_already_sent)
+    log.info(
+        "pipeline.start",
+        run_id=run_id,
+        lookback_days=lookback_days,
+        ignore_sent=ignore_already_sent,
+        force_fallback=force_fallback,
+    )
 
     # Create workflow_run record with automatic retry on transient network hiccups
     await _record_run_start(run_uuid)
@@ -150,6 +157,7 @@ async def run_pipeline(
             "collection_start": collection_start,
             "collection_end": collection_end,
             "ignore_already_sent": ignore_already_sent,
+            "force_search_fallback": force_fallback,
             "raw_articles": [],
             "clean_articles": [],
             "classifications": {},
@@ -320,6 +328,11 @@ async def main() -> None:
         help="Bypass database check for already-sent articles (for testing).",
     )
     parser.add_argument(
+        "--force-fallback",
+        action="store_true",
+        help="Bypass SerpAPI and force fallback retrieval (for testing).",
+    )
+    parser.add_argument(
         "--init-db",
         action="store_true",
         help="Initialise database tables and exit.",
@@ -335,8 +348,17 @@ async def main() -> None:
 
     if args.run_now:
         effective_days = 1 if args.today else args.days
-        log.info("manual_run.start", days=effective_days, ignore_sent=args.ignore_sent)
-        await run_pipeline(lookback_days=effective_days, ignore_already_sent=args.ignore_sent)
+        log.info(
+            "manual_run.start",
+            days=effective_days,
+            ignore_sent=args.ignore_sent,
+            force_fallback=args.force_fallback,
+        )
+        await run_pipeline(
+            lookback_days=effective_days,
+            ignore_already_sent=args.ignore_sent,
+            force_fallback=args.force_fallback,
+        )
         await close_db()
         return
 
