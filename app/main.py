@@ -304,6 +304,11 @@ async def main() -> None:
         help="Execute one pipeline run immediately and exit.",
     )
     parser.add_argument(
+        "--today",
+        action="store_true",
+        help="Run for today only (past 24 hours).",
+    )
+    parser.add_argument(
         "--days",
         type=int,
         default=None,
@@ -329,8 +334,9 @@ async def main() -> None:
         return
 
     if args.run_now:
-        log.info("manual_run.start", days=args.days, ignore_sent=args.ignore_sent)
-        await run_pipeline(lookback_days=args.days, ignore_already_sent=args.ignore_sent)
+        effective_days = 1 if args.today else args.days
+        log.info("manual_run.start", days=effective_days, ignore_sent=args.ignore_sent)
+        await run_pipeline(lookback_days=effective_days, ignore_already_sent=args.ignore_sent)
         await close_db()
         return
 

@@ -42,8 +42,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GEMINI_CLASSIFY_MODEL: ${{ vars.GEMINI_CLASSIFY_MODEL || 'gemini-flash-latest' }}
-          GEMINI_SUMMARIZE_MODEL: ${{ vars.GEMINI_SUMMARIZE_MODEL || 'gemini-flash-latest' }}
+          GEMINI_CLASSIFY_MODEL: ${{ vars.GEMINI_CLASSIFY_MODEL || 'gemini-flash-lite-latest' }}
+          GEMINI_SUMMARIZE_MODEL: ${{ vars.GEMINI_SUMMARIZE_MODEL || 'gemini-flash-lite-latest' }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER || 'power_automate' }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM || 'toka.ibrahim@Drive-Finance.Com' }}
