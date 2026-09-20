@@ -11,4 +11,11 @@ jobs:
     steps:
       - name: Report Trigger Time
         run: |
-          echo "GitHub Actions cron scheduler triggered successfully at $(date -u)"
+          UTC_TIME="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          MSG="GitHub Actions cron scheduler triggered successfully at ${UTC_TIME}"
+          echo "$MSG"
+          echo "### 🕒 Cron Scheduler Heartbeat" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ✅ Active" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger Event:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Execution Time:** \`${UTC_TIME}\`" >> $GITHUB_STEP_SUMMARY
