@@ -207,7 +207,11 @@ class SerpAPICollector(NewsSourceCollector):
         if not raw:
             return fallback
         try:
-            return dparser.parse(raw, fuzzy=True).astimezone(timezone.utc)
+            parsed = dparser.parse(raw, fuzzy=True)
+            if isinstance(parsed, datetime):
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(timezone.utc)
         except Exception:
             pass
         # Try relative strings
@@ -306,7 +310,11 @@ class SerpAPICompetitorCollector(NewsSourceCollector):
         if not raw:
             return fallback
         try:
-            return dparser.parse(raw, fuzzy=True).astimezone(timezone.utc)
+            parsed = dparser.parse(raw, fuzzy=True)
+            if isinstance(parsed, datetime):
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(timezone.utc)
         except Exception:
             pass
         import re

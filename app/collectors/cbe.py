@@ -13,7 +13,7 @@ from urllib.parse import urljoin
 
 import httpx
 import structlog
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from app.collectors.base import NewsSourceCollector
 from app.models.article import Article
@@ -89,7 +89,7 @@ class CBECollector(NewsSourceCollector):
 
         # Find all links with meaningful text
         for a_tag in soup.find_all("a", href=True):
-            href = a_tag.get("href", "").strip()
+            href = str(a_tag.get("href") or "").strip()
             title = a_tag.get_text(" ", strip=True)
 
             # Filter for news/press release URLs with year paths
@@ -133,7 +133,7 @@ class CBECollector(NewsSourceCollector):
 
         return articles
 
-    def _extract_date(self, element: BeautifulSoup, href: str = "") -> Optional[datetime]:
+    def _extract_date(self, element: Tag | BeautifulSoup, href: str = "") -> Optional[datetime]:
         """Extract date from URL path (/YYYY/MM/DD/) or element text/time tags."""
         import re
         from dateutil import parser as dparser
@@ -153,7 +153,11 @@ class CBECollector(NewsSourceCollector):
         if time_tag:
             dt_str = time_tag.get("datetime") or time_tag.get_text(strip=True)
             try:
-                return dparser.parse(dt_str, fuzzy=True).astimezone(timezone.utc)
+                parsed = dparser.parse(str(dt_str), fuzzy=True)
+                if isinstance(parsed, datetime):
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=timezone.utc)
+                    return parsed.astimezone(timezone.utc)
             except Exception:
                 pass
 
@@ -169,7 +173,11 @@ class CBECollector(NewsSourceCollector):
             m = re.search(pat, text, re.IGNORECASE)
             if m:
                 try:
-                    return dparser.parse(m.group(), fuzzy=True).astimezone(timezone.utc)
+                    parsed = dparser.parse(m.group(), fuzzy=True)
+                    if isinstance(parsed, datetime):
+                        if parsed.tzinfo is None:
+                            parsed = parsed.replace(tzinfo=timezone.utc)
+                        return parsed.astimezone(timezone.utc)
                 except Exception:
                     pass
         return None

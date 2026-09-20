@@ -7,6 +7,7 @@ and updates the workflow_run record.
 """
 from __future__ import annotations
 
+from typing import Any
 import uuid
 
 import structlog
@@ -20,6 +21,14 @@ from app.models.event import NewsEvent
 from app.services.email import email_service
 
 log = structlog.get_logger(__name__)
+
+
+def _to_int(val: Any, default: int = 0) -> int:
+    try:
+        return int(val) if val is not None else default
+    except (TypeError, ValueError):
+        return default
+
 
 
 async def _persist_events(events: list[NewsEvent], run_id: str) -> None:
@@ -103,11 +112,11 @@ async def send_email(state: AgentState) -> AgentState:
                     run_repo = WorkflowRunRepository(session)
                     await run_repo.complete(
                         run_id=uuid.UUID(run_id),
-                        articles_collected=stats.get("articles_collected", 0),
-                        articles_relevant=stats.get("articles_relevant", 0),
-                        articles_deduplicated=stats.get("articles_deduplicated", 0),
-                        articles_verified=stats.get("articles_verified", 0),
-                        events_detected=stats.get("events_detected", 0),
+                        articles_collected=_to_int(stats.get("articles_collected")),
+                        articles_relevant=_to_int(stats.get("articles_relevant")),
+                        articles_deduplicated=_to_int(stats.get("articles_deduplicated")),
+                        articles_verified=_to_int(stats.get("articles_verified")),
+                        events_detected=_to_int(stats.get("events_detected")),
                         events_sent=0,
                         summaries_generated=0,
                         email_sent=False,
@@ -164,13 +173,13 @@ async def send_email(state: AgentState) -> AgentState:
             run_repo = WorkflowRunRepository(session)
             await run_repo.complete(
                 run_id=uuid.UUID(run_id),
-                articles_collected=stats.get("articles_collected", 0),
-                articles_relevant=stats.get("articles_relevant", 0),
-                articles_deduplicated=stats.get("articles_deduplicated", 0),
-                articles_verified=stats.get("articles_verified", 0),
-                events_detected=stats.get("events_detected", 0),
-                events_sent=stats.get("events_sent", 0),
-                summaries_generated=stats.get("summaries_generated", 0),
+                articles_collected=_to_int(stats.get("articles_collected")),
+                articles_relevant=_to_int(stats.get("articles_relevant")),
+                articles_deduplicated=_to_int(stats.get("articles_deduplicated")),
+                articles_verified=_to_int(stats.get("articles_verified")),
+                events_detected=_to_int(stats.get("events_detected")),
+                events_sent=_to_int(stats.get("events_sent")),
+                summaries_generated=_to_int(stats.get("summaries_generated")),
                 email_sent=email_sent,
                 error_message="; ".join(errors) if errors else None,
             )

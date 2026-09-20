@@ -45,7 +45,7 @@ class SourceRepository:
         return result.scalar_one_or_none()
 
     async def upsert(self, source: Source) -> Source:
-        existing = await self.get_by_name(source.name)
+        existing = await self.get_by_name(str(source.name))
         if existing:
             existing.url = source.url
             existing.tier = source.tier
@@ -76,9 +76,9 @@ class CompetitorRepository:
         competitors = await self.get_active_competitors()
         terms: list[str] = []
         for c in competitors:
-            terms.append(c.name)
-            if c.aliases:
-                terms.extend(c.aliases)
+            terms.append(str(c.name))
+            if isinstance(c.aliases, list):
+                terms.extend([str(a) for a in c.aliases])
         return list(set(terms))
 
     async def upsert(self, competitor: Competitor) -> Competitor:
@@ -137,7 +137,7 @@ class ArticleRepository:
         saved = []
         for a in articles:
             # Skip if URL already stored (idempotent)
-            if not await self.exists_by_url(a.url):
+            if not await self.exists_by_url(str(a.url)):
                 self._s.add(a)
                 saved.append(a)
         await self._s.flush()

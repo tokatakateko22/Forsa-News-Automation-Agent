@@ -214,4 +214,4 @@ class Settings(BaseSettings):
 
 # ── Module-level singleton ────────────────────────────────────────────────────
 # Import this object anywhere in the codebase:  from app.config import settings
-settings = Settings()
+settings = Settings()  # pyright: ignore[reportCallIssue]

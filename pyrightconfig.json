@@ -1,0 +1,13 @@
+{
+  "include": [
+    "app",
+    "scripts",
+    "tests"
+  ],
+  "extraPaths": [
+    ".",
+    "C:\\Users\\toka.ibrahim\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
+}

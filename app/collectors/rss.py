@@ -46,9 +46,10 @@ def _parse_date(entry: feedparser.FeedParserDict) -> Optional[datetime]:
 def _entry_content(entry: feedparser.FeedParserDict) -> str:
     """Extract the best available text content from a feedparser entry."""
     if hasattr(entry, "content") and entry.content:
-        return entry.content[0].get("value", "")
+        val = entry.content[0].get("value", "")
+        return str(val) if val else ""
     if hasattr(entry, "summary"):
-        return entry.summary or ""
+        return str(entry.summary or "")
     return ""
 
 

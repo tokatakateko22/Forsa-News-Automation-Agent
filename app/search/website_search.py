@@ -101,9 +101,11 @@ class DirectWebsiteCollector:
             items: list[Article] = []
 
             # Extract article links and titles based on standard HTML conventions
-            candidates = soup.find_all(["article", "div", "li"], class_=lambda c: c and any(
-                w in str(c).lower() for w in ("post", "article", "news-item", "story", "card", "entry")
-            ))
+            raw_elements = soup.find_all(["article", "div", "li"])
+            candidates = [
+                el for el in raw_elements
+                if any(w in str(el.get("class", "")).lower() for w in ("post", "article", "news-item", "story", "card", "entry"))
+            ]
 
             if not candidates:
                 # Fallback: look for headline tags
@@ -111,10 +113,13 @@ class DirectWebsiteCollector:
 
             for element in candidates[:30]:
                 link_tag = element.find("a") if element.name != "a" else element
-                if not link_tag or not link_tag.get("href"):
+                if not link_tag:
                     continue
 
-                href = link_tag.get("href", "").strip()
+                raw_href = link_tag.get("href")
+                if not raw_href:
+                    continue
+                href = str(raw_href).strip()
                 title = link_tag.get_text(strip=True)
                 if not title or len(title) < 12:
                     continue

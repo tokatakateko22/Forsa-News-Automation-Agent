@@ -134,6 +134,7 @@ class TestArticleNormalizer(unittest.TestCase):
         rss_date = "Thu, 17 Sep 2026 08:30:00 +0300"
         dt = parse_datetime(rss_date)
         self.assertIsNotNone(dt)
+        assert dt is not None
         self.assertEqual(dt.tzinfo, timezone.utc)
         self.assertEqual(dt.hour, 5)  # 08:30 +03:00 -> 05:30 UTC
 
@@ -150,6 +151,7 @@ class TestArticleNormalizer(unittest.TestCase):
             published_at="2026-09-17T08:00:00Z",
         )
         self.assertIsNotNone(art)
+        assert art is not None
         self.assertEqual(art.title, "Consumer Finance Growing in Egypt")
         self.assertEqual(art.url, "https://dailynewsegypt.com/cf-growth")
         self.assertEqual(art.content, "Retail lending surged by 15%.")
@@ -177,6 +179,7 @@ class TestArticleNormalizer(unittest.TestCase):
             source_name="Source C",
             content="Content C",
         )
+        assert a1 is not None and a2 is not None and a3 is not None
         deduped = deduplicate_articles([a1, a2, a3])
         self.assertEqual(len(deduped), 2)
         urls = {a.url for a in deduped}

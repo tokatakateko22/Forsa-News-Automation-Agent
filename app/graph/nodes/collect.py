@@ -65,26 +65,31 @@ async def collect_news(state: AgentState) -> AgentState:
             comp_repo = CompetitorRepository(session)
             competitors = await comp_repo.get_active_competitors()
             for comp in competitors:
-                competitor_terms.append(comp.name)
-                for alias in (comp.aliases or []):
+                comp_name = str(getattr(comp, "name", ""))
+                competitor_terms.append(comp_name)
+                raw_aliases = getattr(comp, "aliases", None)
+                aliases = [str(a) for a in raw_aliases] if isinstance(raw_aliases, list) else []
+                for alias in aliases:
                     if alias and alias not in competitor_terms:
                         competitor_terms.append(alias)
-                if comp.priority == 1:
+                priority = int(getattr(comp, "priority", 2) or 2)
+                if priority == 1:
                     competitor_objects.append({
-                        "name": comp.name,
-                        "aliases": comp.aliases or [],
+                        "name": comp_name,
+                        "aliases": aliases,
                     })
 
             source_repo = SourceRepository(session)
             sources = await source_repo.get_active_sources()
             for src in sources:
-                if src.source_type == "rss":
+                src_type = str(getattr(src, "source_type", ""))
+                if src_type == "rss":
                     db_rss_sources.append({
-                        "id": src.id,
-                        "name": src.name,
-                        "url": src.url,
-                        "tier": src.tier,
-                        "language": src.language,
+                        "id": int(getattr(src, "id", 0) or 0),
+                        "name": str(getattr(src, "name", "")),
+                        "url": str(getattr(src, "url", "")),
+                        "tier": int(getattr(src, "tier", 2) or 2),
+                        "language": str(getattr(src, "language", "en") or "en"),
                     })
     except Exception as exc:
         log.warning("node.collect_news.db_load_warning", error=str(exc))

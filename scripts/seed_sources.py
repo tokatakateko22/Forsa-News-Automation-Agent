@@ -173,7 +173,7 @@ async def seed_sources() -> None:
                 existing.url = s["url"]
                 existing.tier = s["tier"]
                 existing.priority = s["priority"]
-                existing.active = True
+                setattr(existing, "active", True)
                 updated += 1
             else:
                 session.add(source_obj)
@@ -183,7 +183,7 @@ async def seed_sources() -> None:
         deactivated = 0
         for src in all_active:
             if src.name not in active_names:
-                src.active = False
+                setattr(src, "active", False)
                 deactivated += 1
 
     print(f"Done — {created} created, {updated} updated, {deactivated} deactivated.")

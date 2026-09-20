@@ -19,6 +19,7 @@ CEO output NEVER contains:
   - Business impact analysis
   - Recommendations
 """
+from typing import Any
 import uuid
 from datetime import datetime, timezone
 
@@ -32,6 +33,13 @@ from app.graph.state import AgentState
 from app.models.event import NewsEvent
 
 log = structlog.get_logger(__name__)
+
+
+def _to_int(val: Any, default: int = 0) -> int:
+    try:
+        return int(val) if val is not None else default
+    except (TypeError, ValueError):
+        return default
 
 # Category display order (CRITICAL categories first)
 CATEGORY_ORDER = [
@@ -415,11 +423,11 @@ async def handle_no_news(state: AgentState) -> AgentState:
                 run_repo = WorkflowRunRepository(session)
                 await run_repo.complete(
                     run_id=uuid.UUID(run_id),
-                    articles_collected=stats.get("articles_collected", 0),
-                    articles_relevant=stats.get("articles_relevant", 0),
-                    articles_deduplicated=stats.get("articles_deduplicated", 0),
-                    articles_verified=stats.get("articles_verified", 0),
-                    events_detected=stats.get("events_detected", 0),
+                    articles_collected=_to_int(stats.get("articles_collected")),
+                    articles_relevant=_to_int(stats.get("articles_relevant")),
+                    articles_deduplicated=_to_int(stats.get("articles_deduplicated")),
+                    articles_verified=_to_int(stats.get("articles_verified")),
+                    events_detected=_to_int(stats.get("events_detected")),
                     events_sent=0,
                     summaries_generated=0,
                     email_sent=False,

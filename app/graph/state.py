@@ -6,7 +6,7 @@ LangGraph AgentState — the shared state object passed between all pipeline nod
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 from app.models.article import Article, ArticleClassification
 from app.models.event import NewsEvent, EventSummary
@@ -75,4 +75,4 @@ class AgentState(TypedDict):
 
     # ── Errors & stats ────────────────────────────────────────────────────────
     errors: list[str]
-    stats: RunStats
+    stats: RunStats | dict[str, Any]

@@ -16,8 +16,8 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid
-from datetime import timedelta
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Mapping, Optional
 
 import numpy as np
 import structlog
@@ -62,8 +62,8 @@ def _entities_overlap(entities_a: list[str], entities_b: list[str]) -> bool:
 
 
 def _within_time_window(
-    dt_a: Optional[object],
-    dt_b: Optional[object],
+    dt_a: Optional[datetime],
+    dt_b: Optional[datetime],
     hours: int = 24,
 ) -> bool:
     """Check if two timestamps are within `hours` of each other."""
@@ -147,7 +147,7 @@ class DeduplicationService:
     def deduplicate(
         self,
         articles: list[Article],
-        classifications: dict[str, ArticleClassification],
+        classifications: Mapping[str, Optional[ArticleClassification]],
     ) -> list[NewsEvent]:
         """
         Group articles into events.
@@ -287,7 +287,7 @@ class DeduplicationService:
     def _build_event(
         self,
         articles: list[Article],
-        classifications: dict[str, ArticleClassification],
+        classifications: Mapping[str, Optional[ArticleClassification]],
     ) -> NewsEvent:
         """
         Build a NewsEvent from a group of articles.

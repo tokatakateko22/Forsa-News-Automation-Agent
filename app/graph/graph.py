@@ -28,7 +28,9 @@ Graph topology:
 """
 from __future__ import annotations
 
+from typing import Any
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.state import CompiledStateGraph
 
 from app.graph.state import AgentState
 from app.graph.nodes.collect import collect_news
@@ -42,7 +44,7 @@ from app.graph.nodes.format_email import format_email, handle_no_news, route_aft
 from app.graph.nodes.send_email import send_email
 
 
-def build_graph() -> StateGraph:
+def build_graph() -> CompiledStateGraph:
     """
     Construct and compile the Forsa News Agent LangGraph pipeline.
     Returns a compiled graph ready to invoke.

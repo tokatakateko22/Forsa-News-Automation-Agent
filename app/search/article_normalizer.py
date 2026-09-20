@@ -81,10 +81,13 @@ def parse_datetime(val: Any) -> Optional[datetime]:
             pass
         # Try dateutil fuzzy
         try:
-            parsed = dparser.parse(val, fuzzy=True)
-            if parsed.tzinfo is None:
-                return parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(timezone.utc)
+            res = dparser.parse(val, fuzzy=True)
+            if isinstance(res, tuple):
+                res = res[0]
+            if isinstance(res, datetime):
+                if res.tzinfo is None:
+                    return res.replace(tzinfo=timezone.utc)
+                return res.astimezone(timezone.utc)
         except Exception:
             pass
 

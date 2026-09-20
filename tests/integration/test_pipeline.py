@@ -17,13 +17,15 @@ import pytest_asyncio
 from app.graph.state import AgentState, RunStats
 
 
-def make_test_state() -> AgentState:
+def make_test_state(**kwargs) -> AgentState:
     """Create a minimal valid initial state for pipeline testing."""
-    return {
+    base: AgentState = {
         "run_id": "test-run-001",
         "started_at": datetime.now(timezone.utc),
         "collection_start": datetime(2026, 9, 13, 6, 0, 0, tzinfo=timezone.utc),
         "collection_end": datetime(2026, 9, 14, 8, 0, 0, tzinfo=timezone.utc),
+        "ignore_already_sent": False,
+        "force_search_fallback": False,
         "raw_articles": [],
         "clean_articles": [],
         "classifications": {},
@@ -48,6 +50,8 @@ def make_test_state() -> AgentState:
             errors=[],
         ),
     }
+    base.update(kwargs)  # type: ignore
+    return base
 
 
 @pytest.mark.asyncio
@@ -62,7 +66,7 @@ async def test_preprocess_node_cleans_html():
         content="<p>The CBE raised <strong>interest rates</strong> by 100bps.</p>",
         source_name="CBE",
     )
-    state = {**make_test_state(), "raw_articles": [article]}
+    state = make_test_state(raw_articles=[article])
     result = await preprocess_news(state)
 
     assert len(result["clean_articles"]) == 1
@@ -84,7 +88,7 @@ async def test_classify_node_filters_irrelevant():
         content="Egypt won 2-1 in a football match.",
         source_name="Sports News",
     )
-    state = {**make_test_state(), "clean_articles": [irrelevant]}
+    state = make_test_state(clean_articles=[irrelevant])
     result = await classify_articles(state)
 
     # Should be filtered by keyword pre-filter (no LLM call needed)
@@ -115,7 +119,7 @@ async def test_verify_node_marks_cbe_official():
         canonical_source_tier=1,
         articles=[article],
     )
-    state = {**make_test_state(), "events": [event]}
+    state = make_test_state(events=[event])
     result = await verify_sources(state)
 
     assert result["events"][0].verification_status in ("OFFICIAL", "VERIFIED")
@@ -136,7 +140,7 @@ async def test_filter_routes_no_news():
         mock_score.side_effect = mock_fn
 
         with patch("app.graph.nodes.filter.get_session"):
-            state = {**make_test_state(), "events": []}
+            state = make_test_state(events=[])
             result = await filter_important_news(state)
             route = route_after_filter(result)
             assert route == "no_news"
@@ -169,7 +173,7 @@ async def test_format_email_no_analysis():
     )
     event.summary = summary
 
-    state = {**make_test_state(), "important_events": [event]}
+    state = make_test_state(important_events=[event])
     result = await format_email(state)
 
     forbidden = [

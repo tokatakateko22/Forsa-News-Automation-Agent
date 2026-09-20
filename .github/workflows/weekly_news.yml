@@ -4,7 +4,7 @@ on:
   schedule:
     # 05:30 UTC = 08:30 AM Africa/Cairo time (UTC+3)
     # 0 = Sunday (beginning of the Egyptian business week)
-    - cron: '35 6 * * *'
+    - cron: '30 7 * * *'
   workflow_dispatch:
     # Allows manual triggering from the GitHub Actions tab anytime with custom parameters
     inputs:

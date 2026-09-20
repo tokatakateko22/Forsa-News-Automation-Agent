@@ -132,10 +132,19 @@ async def _fetch_full_text(client: httpx.AsyncClient, url: str) -> str:
         for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form", "button", "iframe"]):
             tag.decompose()
 
+        found_div = None
+        for div in soup.find_all("div"):
+            classes = div.get("class")
+            if classes:
+                classes_str = " ".join(classes) if isinstance(classes, list) else str(classes)
+                if any(k in classes_str.lower() for k in ("content", "article", "entry", "post", "story", "detail")):
+                    found_div = div
+                    break
+
         article = (
             soup.find("article")
             or soup.find("main")
-            or soup.find("div", class_=lambda c: c and any(k in str(c).lower() for k in ("content", "article", "entry", "post", "story", "detail")))
+            or found_div
             or soup.body
         )
         if not article:
@@ -180,7 +189,7 @@ async def preprocess_news(state: AgentState) -> AgentState:
             idx = len(clean_articles)
             clean_articles.append(cleaned)
             # If content is short, fetch full text only for articles in our monitoring scope or Tier 1
-            if len(cleaned.content) < 200 and cleaned.url.startswith("http"):
+            if len(cleaned.content or "") < 200 and cleaned.url.startswith("http"):
                 from app.graph.nodes.classify import _passes_keyword_filter
                 if cleaned.source_tier == 1 or _passes_keyword_filter(cleaned):
                     articles_needing_fetch.append((idx, cleaned))
@@ -201,9 +210,9 @@ async def preprocess_news(state: AgentState) -> AgentState:
                 async with sem:
                     try:
                         full_text = await _fetch_full_text(client, art.url)
-                        if full_text and len(full_text) > len(art.content):
+                        if full_text and len(full_text) > len(art.content or ""):
                             cleaned_body = clean_article_content(full_text)
-                            if len(cleaned_body) > len(art.content):
+                            if len(cleaned_body) > len(art.content or ""):
                                 clean_articles[list_idx] = art.model_copy(
                                     update={"content": cleaned_body}
                                 )

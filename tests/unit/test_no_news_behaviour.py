@@ -44,6 +44,8 @@ def _make_sample_state(
         "started_at": datetime.now(timezone.utc),
         "collection_start": datetime.now(timezone.utc),
         "collection_end": datetime.now(timezone.utc),
+        "ignore_already_sent": False,
+        "force_search_fallback": False,
         "raw_articles": [],
         "clean_articles": [],
         "classifications": {},

@@ -13,7 +13,7 @@ from urllib.parse import urljoin
 
 import httpx
 import structlog
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from dateutil import parser as dparser
 
 from app.collectors.base import NewsSourceCollector
@@ -23,26 +23,19 @@ log = structlog.get_logger(__name__)
 
 FRA_PAGES = [
     {
-        "url": "https://fra.gov.eg/",
+        "url": "https://fra.gov.eg/category/fra_news/",
         "language": "ar",
-        "base": "https://fra.gov.eg",
-    },
-    {
-        "url": "https://fra.gov.eg/category/mc/newsevents/releases/",
-        "language": "ar",
-        "base": "https://fra.gov.eg",
-    },
-    {
-        "url": "https://fra.gov.eg/en/",
-        "language": "en",
         "base": "https://fra.gov.eg",
     },
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ar,en;q=0.9",
 }
 
 AR_MONTHS = {
@@ -54,8 +47,9 @@ AR_MONTHS = {
 
 class FRACollector(NewsSourceCollector):
     """
-    Scrapes FRA official news, regulatory decisions, and licensing updates.
-    Returns Tier 1 articles.
+    Scrapes the FRA official news section.
+    FRA publishes board decisions, new licenses, regulatory updates,
+    and official statements impacting consumer finance and fintech companies.
     """
 
     source_name = "Financial Regulatory Authority"
@@ -64,29 +58,35 @@ class FRACollector(NewsSourceCollector):
     def __init__(self, timeout: int = 30) -> None:
         self.timeout = timeout
 
-    async def fetch(self, start_time: datetime, end_time: datetime) -> list[Article]:
-        articles: list[Article] = []
+    async def fetch(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> list[Article]:
+        all_articles: list[Article] = []
         seen_urls: set[str] = set()
 
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, verify=False) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             for page_cfg in FRA_PAGES:
                 try:
-                    items = await self._scrape_page(client, page_cfg, start_time, end_time, seen_urls)
-                    articles.extend(items)
+                    articles = await self._scrape_page(
+                        client, page_cfg, start_time, end_time, seen_urls
+                    )
+                    all_articles.extend(articles)
                 except Exception as exc:
-                    log.warning(
-                        "fra.page_failed",
+                    log.error(
+                        "fra.page_scrape_failed",
                         url=page_cfg["url"],
                         error=str(exc),
                     )
 
-        log.info("fra.fetched", total=len(articles))
-        return articles
+        log.info("fra.collected", count=len(all_articles))
+        return all_articles
 
     async def _scrape_page(
         self,
         client: httpx.AsyncClient,
-        cfg: dict,
+        cfg: dict[str, str],
         start_time: datetime,
         end_time: datetime,
         seen_urls: set[str],
@@ -96,9 +96,9 @@ class FRACollector(NewsSourceCollector):
         soup = BeautifulSoup(response.text, "lxml")
         articles: list[Article] = []
 
-        candidates: list[tuple[str, str, BeautifulSoup]] = []
+        candidates: list[tuple[str, str, Tag]] = []
         for a_tag in soup.find_all("a", href=True):
-            href = a_tag.get("href", "").strip()
+            href = str(a_tag.get("href") or "").strip()
             title = a_tag.get_text(" ", strip=True)
 
             if "/fra_news/" not in href or not title or len(title) < 15:
@@ -181,7 +181,11 @@ class FRACollector(NewsSourceCollector):
             m = re.search(pat, text, re.IGNORECASE)
             if m:
                 try:
-                    return dparser.parse(m.group(), fuzzy=True).astimezone(timezone.utc)
+                    parsed = dparser.parse(m.group(), fuzzy=True)
+                    if isinstance(parsed, datetime):
+                        if parsed.tzinfo is None:
+                            parsed = parsed.replace(tzinfo=timezone.utc)
+                        return parsed.astimezone(timezone.utc)
                 except Exception:
                     pass
         return None

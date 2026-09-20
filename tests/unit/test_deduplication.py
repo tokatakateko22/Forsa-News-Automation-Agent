@@ -7,6 +7,7 @@ No DB, no LLM, no network required.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Optional
 
 import pytest
 
@@ -38,7 +39,7 @@ def make_article(
     )
 
 
-def make_cls(article_id: str, entities: list[str] = None) -> ArticleClassification:
+def make_cls(article_id: str, entities: Optional[list[str]] = None) -> ArticleClassification:
     return ArticleClassification(
         article_id=article_id,
         is_relevant=True,
