@@ -2,9 +2,8 @@ name: Weekly Financial News Digest
 
 on:
   schedule:
-    # Test schedule for today: runs every 10 minutes at off-peak minutes (:15, :25, :35, :45, :55)
-    # 08:xx & 09:xx UTC = 11:xx AM & 12:xx PM Cairo time (UTC+3)
-    - cron: '15,25,35,45,55 8,9 * * *'
+    - cron: '35 14 * * *'
+      timezone: 'Africa/Cairo'
   workflow_dispatch:
     # Allows manual triggering from the GitHub Actions tab anytime with custom parameters
     inputs:

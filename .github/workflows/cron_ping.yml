@@ -2,7 +2,8 @@ name: Cron Scheduler Heartbeat Test
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Run at off-peak minutes (:03, :18, :33, :48)
+    - cron: '3,18,33,48 * * * *'
   workflow_dispatch:
 
 jobs:
