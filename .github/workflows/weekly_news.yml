@@ -1,11 +1,8 @@
 name: Weekly Financial News Digest
 
 on:
-  schedule:
-    - cron: '35 14 * * *'
-      timezone: 'Africa/Cairo'
+  # Triggered by Microsoft Power Automate Scheduled Cloud Flow or manual GitHub UI dispatch
   workflow_dispatch:
-    # Allows manual triggering from the GitHub Actions tab anytime with custom parameters
     inputs:
       lookback_days:
         description: 'Number of days to look back for news'
@@ -21,6 +18,12 @@ on:
         type: boolean
         required: false
         default: false
+      triggered_by:
+        description: 'Triggering source identifier (e.g., power_automate)'
+        required: false
+        default: 'manual'
+  repository_dispatch:
+    types: [trigger-weekly-news]
 
 jobs:
   run-agent:
@@ -28,7 +31,19 @@ jobs:
     timeout-minutes: 25
 
     steps:
+      - name: Log Execution Trigger Details
+        run: |
+          UTC_TIME="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "### 🚀 Execution Trigger Details" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger Event:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source:** \`${{ inputs.triggered_by || 'power_automate' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger Time:** \`${UTC_TIME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lookback Days:** \`${{ inputs.lookback_days || '7' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ignore Sent:** \`${{ inputs.ignore_sent || 'false' }}\`" >> $GITHUB_STEP_SUMMARY
+
       - name: Check out repository
+
         uses: actions/checkout@v4
 
       - name: Set up Python 3.11
