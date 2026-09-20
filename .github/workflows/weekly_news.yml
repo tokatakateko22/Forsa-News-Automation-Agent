@@ -2,9 +2,9 @@ name: Weekly Financial News Digest
 
 on:
   schedule:
-    # 05:30 UTC = 08:30 AM Africa/Cairo time (UTC+3)
-    # 0 = Sunday (beginning of the Egyptian business week)
-    - cron: '30 7 * * *'
+    # Test schedule for today: runs every 10 minutes at off-peak minutes (:15, :25, :35, :45, :55)
+    # 08:xx & 09:xx UTC = 11:xx AM & 12:xx PM Cairo time (UTC+3)
+    - cron: '15,25,35,45,55 8,9 * * *'
   workflow_dispatch:
     # Allows manual triggering from the GitHub Actions tab anytime with custom parameters
     inputs:
