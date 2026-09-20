@@ -9,6 +9,7 @@ Staged classification:
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 import re
 from typing import Optional
 
@@ -18,6 +19,7 @@ from app.config import settings
 from app.graph.state import AgentState
 from app.models.article import Article, ArticleClassification
 from app.services import llm
+from app.services.deduplication import _is_cbe_rate_story
 
 log = structlog.get_logger(__name__)
 
@@ -241,6 +243,23 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
                 relevance_score=30,
                 confidence=0.9,
             )
+
+    # 1b. Central Bank Monetary Policy & Interest Rate Stories from Financial Media
+    if _is_cbe_rate_story(article.title) or (
+        any(k in norm_title for k in ["مركزي", "cbe", "central bank"])
+        and any(k in norm_text for k in ["سعر الفائده", "اسعار الفائده", "interest rate", "interest rates", "mpc", "تثبيت الفائده", "خفض الفائده", "رفع الفائده"])
+        and any(k in norm_text for k in ["اجتماع", "توقعات", "مصير", "meeting", "hold", "decision", "قرار"])
+    ):
+        return ArticleClassification(
+            article_id=article.article_id,
+            category="CBE",
+            subcategory="Interest Rates",
+            entities=["Central Bank of Egypt"],
+            is_relevant=True,
+            importance_score=95,
+            relevance_score=100,
+            confidence=1.0,
+        )
 
     # 2. FRA Decisions, Supervisory Manuals, and Enforcement Actions
     is_ollin_enforcement = (
@@ -471,6 +490,11 @@ async def classify_articles(state: AgentState) -> AgentState:
     )
 
     # Stage 3: LLM classification for remaining candidates (cap at 15 to stay within free tier RPM)
+    # Sort remaining candidates newest-first so today's news is always prioritized over older days
+    remaining_candidates.sort(
+        key=lambda x: x.published_at or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
     MAX_LLM_CLASSIFY = 15
     llm_batch = remaining_candidates[:MAX_LLM_CLASSIFY]
 

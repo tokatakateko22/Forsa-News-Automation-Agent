@@ -121,9 +121,16 @@ def _get_regulatory_topic(title: str) -> str:
 def _is_cbe_rate_story(title: str) -> bool:
     t = title.lower()
     cbe_terms = ["مركزي", "المركزي", "cbe", "central bank"]
-    rate_terms = ["فائدة", "الفائدة", "interest rate", "mpc", "سياسة نقدية"]
-    meeting_terms = ["اجتماع", "تثبيت", "توقعات", "مصير", "meeting", "hold", "cut", "decision", "سعر الفائدة"]
+    rate_terms = [
+        "فائدة", "الفائدة", "سعر الفائدة", "أسعار الفائدة",
+        "interest rate", "interest rates", "rates", "rate", "mpc", "سياسة نقدية"
+    ]
+    meeting_terms = [
+        "اجتماع", "تثبيت", "توقعات", "مصير", "يحسم", "حسم", "رفع", "خفض",
+        "meeting", "hold", "cut", "hike", "decision", "decide", "سعر الفائدة"
+    ]
     return any(w in t for w in cbe_terms) and any(w in t for w in rate_terms) and any(w in t for w in meeting_terms)
+
 
 
 class DeduplicationService:
