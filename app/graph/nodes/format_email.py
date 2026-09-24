@@ -31,6 +31,7 @@ from app.database.connection import get_session
 from app.database.repositories import WorkflowRunRepository
 from app.graph.state import AgentState
 from app.models.event import NewsEvent
+from app.services.spelling import normalize_brand_spellings
 
 log = structlog.get_logger(__name__)
 
@@ -88,7 +89,7 @@ ARABIC_COMPETITOR_MAP = {
     "امان": "Aman",
     "سهولة": "Souhoola",
     "سيمبل": "Sympl",
-    "بلنك": "blnk",
+    "بلنك": "Blnk",
     "شهري": "Shahry",
     "بي تك": "B.Tech",
     "موبايلي": "Mobily Pay",
@@ -134,13 +135,14 @@ def _event_plain_block(event: NewsEvent) -> str:
         return ""
 
     emoji = CATEGORY_EMOJI.get(event.category, "⚪")
-    category_label = _format_category_label(event, summary)
+    category_label = normalize_brand_spellings(_format_category_label(event, summary))
+    clean_text = normalize_brand_spellings(summary.summary_text, competitor_hint=summary.competitor_name)
 
     lines = [
         "━" * 54,
         f"{emoji} {category_label}",
         "",
-        summary.summary_text,
+        clean_text,
         "",
         f"Source: {summary.source_name}",
         f"Published: {_format_date(summary.published_at)}",
@@ -156,7 +158,8 @@ def _event_html_block(event: NewsEvent) -> str:
         return ""
 
     emoji = CATEGORY_EMOJI.get(event.category, "⚪")
-    category_label = _format_category_label(event, summary)
+    category_label = normalize_brand_spellings(_format_category_label(event, summary))
+    clean_text = normalize_brand_spellings(summary.summary_text, competitor_hint=summary.competitor_name)
 
     color_map = {
         "🏛️": "#2b6cb0",
@@ -174,7 +177,7 @@ def _event_html_block(event: NewsEvent) -> str:
     return f"""
 <div style="border-left:4px solid {accent};padding:16px 20px;margin:16px 0;background:#f9f9f9;">
   <p style="margin:0 0 6px 0;font-weight:700;font-size:14px;color:{accent};">{emoji} {category_label}</p>
-  <p style="margin:0 0 12px 0;font-size:15px;line-height:1.6;color:#2d3748;">{summary.summary_text}</p>
+  <p style="margin:0 0 12px 0;font-size:15px;line-height:1.6;color:#2d3748;">{clean_text}</p>
   <p style="margin:0;font-size:12px;color:#718096;">
     <strong>Source:</strong> {summary.source_name} &nbsp;|&nbsp;
     <strong>Published:</strong> {_format_date(summary.published_at)} &nbsp;|&nbsp;
@@ -319,7 +322,7 @@ def _build_no_news_email(run_date: str) -> tuple[str, str, str]:
   <p style="font-size:11px;color:#a0aec0;">Automated news digest · Do not reply</p>
 </body>
 </html>"""
-    return subject, html, plain
+    return subject, normalize_brand_spellings(html), normalize_brand_spellings(plain)
 
 
 async def format_email(state: AgentState) -> AgentState:

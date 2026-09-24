@@ -234,6 +234,29 @@ RULES & PRIORITIES:
    - If the source text contains factual data (such as inflation rates, CPI figures, monetary decisions, commercial partnerships, or regulatory decisions), ALWAYS provide a summary.
    - Only return "NO_SUBSTANCE" if the input is completely empty or devoid of any news, figures, announcements, or business information.
    - NEVER write meta-summaries explaining that the source lacks information.
+
+5. CANONICAL BRAND & ENTITY SPELLINGS (MANDATORY):
+   When translating Arabic texts or writing summaries, you MUST strictly use the official English corporate brand spellings — NEVER invent phonetic transliterations:
+   - "Souhoola" (NEVER "SooLa", "Sohoolah", "Sahula", "Suhula", "Souhoula")
+   - "valU" (NEVER "Valiu", "Falio", "Valyou", "Value")
+   - "MNT-Halan" (NEVER "Halan" alone when referring to the corporate entity, NEVER "MNT Halan")
+   - "Contact Financial" (NEVER "Kontact")
+   - "Aman" or "Aman Holding" (NEVER "Amen")
+   - "Sympl" (NEVER "Simple")
+   - "Blnk" (NEVER "Blink")
+   - "B.TECH" (NEVER "Btech" or "B-Tech")
+   - "Premium Card"
+   - "Shahry" (NEVER "Shahri")
+   - "Fawry" (NEVER "Fawri")
+   - "Klivvr" (NEVER "Clever")
+   - "mylo" (NEVER "Milo")
+   - "Takka" (NEVER "Taka")
+   - "Rawaq Finance" (NEVER "Rawaj")
+   - "Forsa" / "Drive Finance" (NEVER "Fursa")
+   - "I-Score" (NEVER "i-score" or "iscore")
+   - "InstaPay" (NEVER "Instapay")
+   - "Meeza" (NEVER "Meza")
+   - Regulators: ALWAYS "CBE" (Central Bank of Egypt) and "FRA" (Financial Regulatory Authority).
 """
 
 _SUMMARIZE_USER_TEMPLATE = """Summarize this news article factually:

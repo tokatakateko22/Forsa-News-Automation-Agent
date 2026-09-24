@@ -15,6 +15,7 @@ import structlog
 from app.graph.state import AgentState
 from app.models.event import EventSummary, NewsEvent
 from app.services import llm
+from app.services.spelling import normalize_brand_spellings
 
 log = structlog.get_logger(__name__)
 
@@ -83,19 +84,22 @@ async def _summarize_event(event: NewsEvent) -> NewsEvent:
             event.summary = None
             return event
 
+        competitor_match = (
+            event.classification.competitor_match
+            if event.classification else None
+        )
+        summary_text = normalize_brand_spellings(summary_text, competitor_hint=competitor_match)
+
         event.summary = EventSummary(
             event_id=event.event_id,
             summary_text=summary_text,
             category=event.category,
             subcategory=event.subcategory,
-            canonical_title=event.canonical_title,
+            canonical_title=normalize_brand_spellings(event.canonical_title, competitor_hint=competitor_match),
             canonical_url=event.canonical_url,
             source_name=event.canonical_source_name,
             published_at=event.event_date,
-            competitor_name=(
-                event.classification.competitor_match
-                if event.classification else None
-            ),
+            competitor_name=competitor_match,
         )
     except Exception as exc:
         log.error(
