@@ -41,10 +41,10 @@ FORBIDDEN_PHRASES = [
 
 
 def make_event(
-    title: str = "CBE raises rates",
-    category: str = "CBE",
-    source: str = "Central Bank of Egypt",
-    url: str = "https://cbe.org.eg/press-release",
+    title: str = "FRA issues new consumer finance supervisory manual",
+    category: str = "FRA",
+    source: str = "Financial Regulatory Authority",
+    url: str = "https://fra.gov.eg/press-release",
 ) -> NewsEvent:
     event = NewsEvent(
         canonical_title=title,
@@ -58,7 +58,7 @@ def make_event(
     )
     event.summary = EventSummary(
         event_id=event.event_id,
-        summary_text="The Central Bank of Egypt raised its benchmark interest rate by 100 basis points.",
+        summary_text="The Financial Regulatory Authority issued new supervisory rules for consumer finance companies.",
         category=category,
         canonical_title=title,
         canonical_url=url,
@@ -72,17 +72,17 @@ class TestCEOEmailContent:
     def test_contains_summary_text(self):
         event = make_event()
         block = _event_plain_block(event)
-        assert "Central Bank of Egypt raised its benchmark" in block
+        assert "Financial Regulatory Authority issued new supervisory" in block
 
     def test_contains_source_name(self):
         event = make_event()
         block = _event_plain_block(event)
-        assert "Central Bank of Egypt" in block
+        assert "Financial Regulatory Authority" in block
 
     def test_contains_url(self):
         event = make_event()
         block = _event_plain_block(event)
-        assert "https://cbe.org.eg/press-release" in block
+        assert "https://fra.gov.eg/press-release" in block
 
     def test_contains_date(self):
         event = make_event()
@@ -90,7 +90,7 @@ class TestCEOEmailContent:
         assert "2026" in block or "Sep" in block
 
     def test_contains_category_emoji(self):
-        event = make_event(category="CBE")
+        event = make_event(category="FRA")
         block = _event_plain_block(event)
         assert "🔴" in block
 
@@ -127,14 +127,14 @@ class TestCEOEmailForbiddenContent:
 
 
 class TestCategoryOrdering:
-    def test_cbe_before_economy(self):
-        assert CATEGORY_ORDER.index("CBE") < CATEGORY_ORDER.index("Economy")
+    def test_fra_before_economy(self):
+        assert CATEGORY_ORDER.index("FRA") < CATEGORY_ORDER.index("Economy")
 
     def test_fra_before_fintech(self):
         assert CATEGORY_ORDER.index("FRA") < CATEGORY_ORDER.index("FinTech")
 
     def test_critical_categories_first(self):
-        critical = ["CBE", "FRA", "Consumer Finance"]
+        critical = ["FRA", "Consumer Finance"]
         non_critical = ["Economy", "Other"]
         for c in critical:
             for nc in non_critical:
@@ -158,4 +158,4 @@ class TestNoNewsEmail:
         subject, html, plain = _build_email(events, "13 September 2026")
         assert "Forsa Financial Market News" in plain
         assert "13 September 2026" in plain
-        assert "Central Bank of Egypt raised" in plain
+        assert "Financial Regulatory Authority" in plain

@@ -248,12 +248,23 @@ class TestRelevanceFilter(unittest.TestCase):
         self.assertTrue(is_rel2)
         self.assertIn("competitor", topics2)
 
-    def test_regulatory_cbe_accepted(self):
+    def test_cbe_rejected_as_out_of_scope(self):
         art = Article(
             title="Central Bank of Egypt holds monetary policy meeting on interest rates",
             url="https://example.com/4",
             source_name="Test",
             content="The Monetary Policy Committee decided to keep the corridor overnight deposit rate unchanged.",
+        )
+        is_rel, topics = evaluate_article_relevance(art)
+        self.assertFalse(is_rel)
+        self.assertEqual(topics, [])
+
+    def test_fra_regulatory_accepted(self):
+        art = Article(
+            title="Financial Regulatory Authority FRA issues supervisory manual for consumer finance",
+            url="https://example.com/fra-1",
+            source_name="FRA Official",
+            content="The Financial Regulatory Authority issued new guidelines for non-banking financial institutions.",
         )
         is_rel, topics = evaluate_article_relevance(art)
         self.assertTrue(is_rel)
@@ -297,6 +308,24 @@ class TestRelevanceFilter(unittest.TestCase):
             content="طرح دوري معتاد لأذون الخزانة.",
         )
         self.assertFalse(evaluate_article_relevance(art3)[0])
+
+        # Food prices and Black Sea shipping costs
+        art_food = Article(
+            title="Egyptian food prices hitting historic domestic highs due to currency devaluation and Black Sea shipping costs",
+            url="https://example.com/food-1",
+            source_name="Test",
+            content="Local consumers face unprecedented food costs, impacting consumer purchasing power.",
+        )
+        self.assertFalse(evaluate_article_relevance(art_food)[0])
+
+        # Arabic commodity & poultry prices
+        art_commodities = Article(
+            title="ارتفاع أسعار المواد الغذائية والسلع الأساسية والدواجن",
+            url="https://example.com/food-ar",
+            source_name="Test",
+            content="ارتفاع تكاليف الشحن وأسعار السلع الغذائية في الأسواق المحلية.",
+        )
+        self.assertFalse(evaluate_article_relevance(art_commodities)[0])
 
     def test_general_noise_rejected(self):
         art = Article(

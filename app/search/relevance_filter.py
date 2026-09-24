@@ -30,7 +30,11 @@ _EXCLUSION_RE = re.compile(
     r"تأمين\s+الحريق|fire\s+insurance|تأمين\s+بحري|marine\s+insurance|مجمعة\s+التأمين|مجمعات\s+التأمين|insurance\s+pools?|"
     r"(?:طرح\s+|إصدار\s+|يطرح\s+)?(?:أذون|سندات)\s+خزانة|treasury\s+bills?|treasury\s+bonds?|t-bills?\s+auction|t-bonds?\s+auction|"
     r"كرة\s+القدم|مباراة|دوري|أهداف|football|championship|entertainment|cinema|فيلم|مسلسل|"
-    r"الميسرات|ميسرات|الميسّرات"
+    r"الميسرات|ميسرات|الميسّرات|"
+    r"food\s+prices?|أسعار\s+(?:المواد\s+الغذائية|الدواجن|اللحوم|الخضار|السلع\s+الغذائية|الغذاء)|"
+    r"shipping\s+costs?|تكاليف\s+الشحن|freight|black\s+sea|البحر\s+الأسود|"
+    r"commodity\s+prices?|أسعار\s+السلع|wheat|قمح|poultry|دواجن|livestock|مواشي|fertilizer|أسمدة|crops?|محاصيل|"
+    r"central\s+bank\s+of\s+egypt|البنك\s+المركزي\s+المصري|البنك\s+المركزي|\bcbe\b"
     r")",
     re.IGNORECASE,
 )
@@ -87,14 +91,11 @@ _COMPETITOR_PATTERNS = [
     r"\bmoney\s+fellows\b", r"موني\s+فيلوز",
 ]
 
-# ── 4. Regulatory & Monetary (CBE & FRA) ──────────────────────────────────────
+# ── 4. Regulatory (FRA & Non-Banking Financial Sector) ─────────────────────────
 _REGULATORY_PATTERNS = [
-    r"\bcentral\s+bank\s+of\s+egypt\b", r"\bcbe\b", r"\bmonetary\s+policy\b",
-    r"\binterest\s+rates?\b", r"\bcorridor\b", r"\bmpc\b", r"\bcash\s+reserve\b",
     r"\bfinancial\s+regulatory\s+authority\b", r"\bfra\b", r"\bnbfi\b", r"\bnbfs\b",
     r"\bsupervisory\s+manual\b",
-    r"البنك\s+المركزي", r"المركزي\s+المصري", r"الرقابة\s+المالية", r"الهيئة\s+العامة\s+للرقابة\s+المالية",
-    r"لجنة\s+السياسة\s+النقدية", r"سعر\s+الفائدة", r"أسعار\s+الفائدة",
+    r"الرقابة\s+المالية", r"الهيئة\s+العامة\s+للرقابة\s+المالية",
     r"الأنشطة\s+المالية\s+غير\s+المصرفية", r"القطاع\s+المالي\s+غير\s+المصرفي",
     r"دليل\s+إشرافي", r"قواعد\s+التمويل\s+الاستهلاكي",
 ]

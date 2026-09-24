@@ -33,19 +33,20 @@ _EXCLUSION_RE = re.compile(
     r"تجديد\s+تعيين|مساعد\s+رئيس\s+الهيئة|reappointed\s+assistant|assistant\s+to\s+chairman|"
     r"تأمين\s+الحريق|fire\s+insurance|تأمين\s+بحري|marine\s+insurance|مجمعة\s+التأمين|مجمعات\s+التأمين|insurance\s+pools?|"
     r"(?:طرح\s+|إصدار\s+|يطرح\s+)?(?:أذون|سندات)\s+خزانة|treasury\s+bills?|treasury\s+bonds?|t-bills?\s+auction|t-bonds?\s+auction|"
-    r"الميسرات|ميسرات|الميسّرات"
+    r"الميسرات|ميسرات|الميسّرات|"
+    r"food\s+prices?|أسعار\s+(?:المواد\s+الغذائية|الدواجن|اللحوم|الخضار|السلع\s+الغذائية|الغذاء)|"
+    r"shipping\s+costs?|تكاليف\s+الشحن|freight|black\s+sea|البحر\s+الأسود|"
+    r"commodity\s+prices?|أسعار\s+السلع|wheat|قمح|poultry|دواجن|livestock|مواشي|fertilizer|أسمدة|crops?|محاصيل|"
+    r"central\s+bank\s+of\s+egypt|البنك\s+المركزي\s+المصري|البنك\s+المركزي|\bcbe\b"
     r")",
     re.IGNORECASE,
 )
 
 SCOPE_KEYWORDS = [
-    # ── Regulators & Monetary Policy (CBE & FRA) ───────────────────────────
-    "central bank", "cbe", "monetary policy", "interest rate", "interest rates",
-    "corridor", "mpc", "discount rate", "cash reserve ratio",
+    # ── Regulator (FRA & Non-Banking Financial Sector) ─────────────────────
     "financial regulatory", "financial regulatory authority", "fra",
     "non-bank", "nbfi", "nbfs", "capital market", "securitization", "securitisation",
-    "البنك المركزي", "المركزي المصري", "الرقابة المالية", "لجنة السياسة النقدية",
-    "سعر الفائدة", "أسعار الفائدة", "الأنشطة المالية غير المصرفية", "توريق", "سندات توريق",
+    "الرقابة المالية", "الأنشطة المالية غير المصرفية", "توريق", "سندات توريق",
 
     # ── Consumer Finance & Lending Dynamics ────────────────────────────────
     "consumer finance", "consumer credit", "retail lending", "retail banking",
@@ -80,14 +81,13 @@ SCOPE_KEYWORDS = [
     "money fellows", "مني فيلوز",
     "onefinance", "bedaya", "tamweel", "mashroey", "tasheel", "tanmeyah",
 
-    "inflation", "cpi", "capmas", "gdp", "exchange rate", "devaluation", "fx",
-    "egypt finance", "egyptian economy",
-    "reserves", "foreign reserves", "net international reserves", "international reserves",
-    "التضخم", "سعر الصرف", "الجنيه المصري", "احتياطي", "احتياطيات", "احتياطي النقد الأجنبي",
-    "تحويلات المصريين",
+    # ── Consumer Credit Economy & Market Indicators ────────────────────────
+    "inflation", "cpi", "capmas", "purchasing power", "disposable income",
+    "debt burden", "household debt", "consumer debt", "credit card spending",
+    "التضخم", "القوة الشرائية", "عبء الدين", "القدرة الشرائية",
     # ── Enforcement, Codification & Market Indicators ─────────────────────
     "جلوبال بارادايم", "global paradigm", "أولين", "ollin", "جلوبال كورب", "globalcorp",
-    "دليل إشرافي", "الدليل الإشرافي", "supervisory manual", "عبء الدين",
+    "دليل إشرافي", "الدليل الإشرافي", "supervisory manual",
     "egx30", "egx 30", "البورصة المصرية",
 ]
 
@@ -113,10 +113,20 @@ def _passes_keyword_filter(article: Article) -> bool:
     if _EXCLUSION_RE.search(article.title):
         return False
 
-    # Tier 1 official sources (CBE, FRA)
-    if article.source_tier == 1 or (article.source_name and any(
-        s in article.source_name for s in ["Central Bank of Egypt", "Financial Regulatory Authority", "CBE", "FRA"]
-    )):
+    # Check content against exclusion patterns
+    if article.content and _EXCLUSION_RE.search(article.content[:500]):
+        return False
+
+    # Never pass articles from CBE
+    if article.source_name and any(
+        s in article.source_name for s in ["Central Bank of Egypt", "CBE", "البنك المركزي"]
+    ):
+        return False
+
+    # Tier 1 official sources (FRA)
+    if article.source_name and any(
+        s in article.source_name for s in ["Financial Regulatory Authority", "FRA", "الرقابة المالية"]
+    ):
         return True
 
     combined = f"{article.title} {article.content or ''}"
@@ -231,47 +241,24 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
                 confidence=0.9,
             )
 
-    if any(k in src for k in ["Central Bank of Egypt", "CBE", "البنك المركزي"]) or article.source_tier == 1:
-        cbe_in_scope = [
-            "فائده", "الفائده", "سياسه نقديه", "mpc", "interest rate", "تضخم", "التضخم", "cpi",
-            "احتياطي", "reserves", "سعر الصرف", "انستاباي", "instapay", "ميزه", "meeza",
-            "محافظ", "تمويل", "ائتمان", "قروض"
-        ]
-        if any(term in norm_text for term in cbe_in_scope):
-            return ArticleClassification(
-                article_id=article.article_id,
-                category="CBE",
-                subcategory="Official Announcement",
-                entities=["Central Bank of Egypt"],
-                is_relevant=True,
-                importance_score=95,
-                relevance_score=100,
-                confidence=1.0,
-            )
-        else:
-            return ArticleClassification(
-                article_id=article.article_id,
-                category="CBE",
-                is_relevant=False,
-                importance_score=30,
-                relevance_score=30,
-                confidence=0.9,
-            )
-
-    # 1b. Central Bank Monetary Policy & Interest Rate Stories from Financial Media
-    if _is_cbe_rate_story(article.title) or (
-        any(k in norm_title for k in ["مركزي", "cbe", "central bank"])
-        and any(k in norm_text for k in ["سعر الفائده", "اسعار الفائده", "interest rate", "interest rates", "mpc", "تثبيت الفائده", "خفض الفائده", "رفع الفائده"])
-        and any(k in norm_text for k in ["اجتماع", "توقعات", "مصير", "meeting", "hold", "decision", "قرار"])
+    # 1b. Central Bank of Egypt (CBE) news is OUT OF SCOPE per executive directive
+    if (
+        any(k in src for k in ["Central Bank of Egypt", "CBE", "البنك المركزي"])
+        or _is_cbe_rate_story(article.title)
+        or any(k in norm_title for k in ["مركزي", "cbe", "central bank"])
+        or (
+            any(k in norm_text for k in ["مركزي", "cbe", "central bank"])
+            and any(k in norm_text for k in ["سعر الفائده", "اسعار الفائده", "interest rate", "interest rates", "mpc"])
+        )
     ):
         return ArticleClassification(
             article_id=article.article_id,
-            category="CBE",
-            subcategory="Interest Rates",
+            category="Other",
+            subcategory="CBE Out of Scope",
             entities=["Central Bank of Egypt"],
-            is_relevant=True,
-            importance_score=95,
-            relevance_score=100,
+            is_relevant=False,
+            importance_score=0,
+            relevance_score=0,
             confidence=1.0,
         )
 

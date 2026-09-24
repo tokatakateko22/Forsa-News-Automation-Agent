@@ -498,3 +498,58 @@ class TestExecutiveQualityGuarantees:
         assert not any("\u0600" <= c <= "\u06ff" for c in label)
 
 
+class TestCBERemovalAndConsumerFinanceEconomy:
+    def test_food_prices_and_shipping_costs_rejected(self):
+        # User reported exact scenario: generic food prices & shipping costs
+        art = make_article(
+            title="Egyptian food prices are hitting historic domestic highs due to currency devaluation and Black Sea shipping costs",
+            content="Egyptian food prices are hitting historic domestic highs due to the severe devaluation of the Egyptian pound against the dollar and rising Black Sea shipping costs, even though global commodity prices remain well below their 2022 peaks. This ongoing currency depreciation and supply chain pressure mean that local consumers face unprecedented food costs, directly impacting consumer purchasing power and market liquidity.",
+            source_name="Daily News Egypt",
+        )
+        assert not _passes_keyword_filter(art)
+        cls = _deterministic_classify(art)
+        assert cls is None or not cls.is_relevant
+
+    def test_cbe_news_completely_excluded(self):
+        # CBE official statement or monetary policy decision
+        art_cbe = make_article(
+            title="Central Bank of Egypt holds monetary policy meeting on interest rates",
+            content="The MPC of the Central Bank of Egypt decided to keep overnight deposit rates unchanged.",
+            source_name="Central Bank of Egypt",
+            source_tier=1,
+        )
+        assert not _passes_keyword_filter(art_cbe)
+        cls = _deterministic_classify(art_cbe)
+        assert cls is not None
+        assert not cls.is_relevant
+        assert cls.category == "Other"
+
+    def test_cbe_media_report_excluded(self):
+        art_media = make_article(
+            title="تثبيت سعر الفائدة.. توقعات اجتماع البنك المركزي المقبل",
+            content="توقعات لجنة السياسة النقدية بالبنك المركزي المصري ومصير أسعار الفائدة في البنوك.",
+            source_name="Al Mal",
+        )
+        assert not _passes_keyword_filter(art_media)
+        cls = _deterministic_classify(art_media)
+        assert cls is not None
+        assert not cls.is_relevant
+        assert cls.category == "Other"
+
+    def test_pillars_contain_no_cbe(self):
+        from app.graph.nodes.format_email import PILLARS, CATEGORY_ORDER
+        pillar_ids = [p["id"] for p in PILLARS]
+        assert "cbe" not in pillar_ids
+        assert pillar_ids == ["competitors", "fra", "market"]
+        assert "CBE" not in CATEGORY_ORDER
+
+    def test_consumer_finance_economy_accepted(self):
+        art_cf = make_article(
+            title="ارتفاع عبء الدين والتمويل الاستهلاكي لدى الأفراد في مصر",
+            content="تقرير يرصد تأثير القوة الشرائية وعبء الدين على قدرة الأفراد في سداد أقساط التمويل الاستهلاكي.",
+            source_name="Al Borsa",
+        )
+        assert _passes_keyword_filter(art_cf)
+
+
+

@@ -26,27 +26,6 @@ SERPAPI_BASE = "https://serpapi.com/search.json"
 # Each query targets a specific monitoring scope. Bilingual where useful.
 
 CATEGORY_QUERIES: list[dict] = [
-    # CBE / Monetary Policy & Key Indicators
-    {
-        "query": "Central Bank of Egypt interest rate monetary policy",
-        "category": "CBE",
-        "lang": "en",
-    },
-    {
-        "query": "البنك المركزي المصري سعر الفائدة السياسة النقدية",
-        "category": "CBE",
-        "lang": "ar",
-    },
-    {
-        "query": '"Central Bank of Egypt" reserves OR inflation OR MPC',
-        "category": "CBE",
-        "lang": "en",
-    },
-    {
-        "query": '"البنك المركزي المصري" احتياطي التضخم "السياسة النقدية"',
-        "category": "CBE",
-        "lang": "ar",
-    },
     # FRA / Consumer Finance Regulation & Non-Banking
     {
         "query": "Financial Regulatory Authority FRA Egypt consumer finance regulation",
@@ -89,19 +68,19 @@ CATEGORY_QUERIES: list[dict] = [
         "category": "FinTech",
         "lang": "en",
     },
-    # Egyptian Financial Market & Economy
+    # Egyptian Financial Market & Consumer Finance Economy
     {
         "query": "Egypt banking fintech financial services market",
         "category": "Financial Market",
         "lang": "en",
     },
     {
-        "query": "Egypt inflation GDP exchange rate fiscal policy economy",
+        "query": "Egypt consumer finance purchasing power retail credit debt burden",
         "category": "Economy",
         "lang": "en",
     },
     {
-        "query": "مصر تضخم احتياطي نقد أجنبي سعر صرف اقتصاد",
+        "query": "مصر التمويل الاستهلاكي القوة الشرائية عبء الدين قدرة التقسيط",
         "category": "Economy",
         "lang": "ar",
     },

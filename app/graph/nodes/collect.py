@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 import structlog
 
 from app.collectors.base import NewsSourceCollector
-from app.collectors.cbe import CBECollector
 from app.collectors.fra import FRACollector
 from app.config import settings
 from app.database.connection import get_session
@@ -35,7 +34,7 @@ async def collect_news(state: AgentState) -> AgentState:
     """
     LangGraph node: collect_news
     Collects articles from:
-      1. Tier 1 Official scrapers (CBE, FRA)
+      1. Tier 1 Official scrapers (FRA)
       2. SearchManager (SerpAPI Google News & Competitors, with automatic RSS & Web Scraping fallback)
     Runs concurrently; persists new articles to DB. Returns deduplicated Article objects.
     """
@@ -51,8 +50,7 @@ async def collect_news(state: AgentState) -> AgentState:
     errors: list[str] = list(state.get("errors", []))
     force_fallback = state.get("force_search_fallback", False) or settings.force_search_fallback
 
-    # 1. Prepare Tier 1 Official scrapers
-    cbe_collector = CBECollector(timeout=settings.http_timeout_seconds)
+    # 1. Prepare Tier 1 Official scrapers (FRA)
     fra_collector = FRACollector(timeout=settings.http_timeout_seconds)
 
     # 2. Retrieve competitors and RSS sources from DB for search / fallback
@@ -102,7 +100,6 @@ async def collect_news(state: AgentState) -> AgentState:
 
     # 4. Run official collectors and search manager concurrently
     tasks = [
-        cbe_collector.safe_fetch(start_time, end_time),
         fra_collector.safe_fetch(start_time, end_time),
         search_manager.collect_news(
             start_time=start_time,

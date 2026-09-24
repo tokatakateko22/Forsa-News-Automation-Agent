@@ -44,7 +44,6 @@ def _to_int(val: Any, default: int = 0) -> int:
 
 # Category display order (CRITICAL categories first)
 CATEGORY_ORDER = [
-    "CBE",
     "FRA",
     "Consumer Finance",
     "Competitor",
@@ -57,7 +56,6 @@ CATEGORY_ORDER = [
 
 # Category emoji indicators
 CATEGORY_EMOJI = {
-    "CBE": "🔴",
     "FRA": "🔴",
     "Consumer Finance": "🟠",
     "Competitor": "🟠",
@@ -187,14 +185,8 @@ def _event_html_block(event: NewsEvent) -> str:
 """
 
 
-# Executive Pillars in requested order: CBE -> Competitors -> Market Backdrop & Economy -> FRA
+# Executive Pillars: Competitor & Consumer Finance -> FRA -> Market Backdrop & Economy
 PILLARS = [
-    {
-        "id": "cbe",
-        "title": "Central Bank of Egypt (CBE) — Macro & Monetary Policy",
-        "emoji": "🏛️",
-        "categories": ["CBE"],
-    },
     {
         "id": "competitors",
         "title": "Competitor Intelligence & Consumer Finance",
@@ -202,16 +194,16 @@ PILLARS = [
         "categories": ["Competitor", "Consumer Finance", "FinTech"],
     },
     {
-        "id": "market",
-        "title": "Market Backdrop & Economy",
-        "emoji": "📈",
-        "categories": ["Financial Market", "Economy", "Banking", "Other"],
-    },
-    {
         "id": "fra",
         "title": "Financial Regulatory Authority (FRA) — Regulations & Market Oversight",
         "emoji": "🔴",
         "categories": ["FRA"],
+    },
+    {
+        "id": "market",
+        "title": "Market Backdrop & Economy",
+        "emoji": "📈",
+        "categories": ["Financial Market", "Economy", "Banking", "Other"],
     },
 ]
 
@@ -219,11 +211,10 @@ PILLARS = [
 def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]:
     """
     Build subject, HTML body, and plain-text body from the list of events.
-    Groups events into 4 executive pillars:
-      1. Central Bank of Egypt (CBE)
-      2. Financial Regulatory Authority (FRA)
-      3. Competitor Intelligence & Consumer Finance
-      4. Market Backdrop & Economy
+    Groups events into 3 executive pillars:
+      1. Competitor Intelligence & Consumer Finance
+      2. Financial Regulatory Authority (FRA) — Regulations & Market Oversight
+      3. Market Backdrop & Economy
     """
     subject = f"{settings.email_subject_prefix} — {run_date}"
 

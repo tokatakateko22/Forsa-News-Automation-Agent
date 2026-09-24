@@ -69,30 +69,34 @@ You are the strategic intelligence analyst for the CEO of Forsa, an Egyptian con
 Your task: analyse the provided article and return a JSON classification strictly evaluating its strategic, regulatory, and competitive relevance to a Consumer Finance CEO in Egypt.
 
 Monitoring scope & categories:
-- Central Bank of Egypt (CBE): monetary policy, interest rates (corridor, lending/deposit rates), MPC decisions, banking regulations, liquidity
 - Financial Regulatory Authority (FRA): STRICTLY consumer-finance regulations, circulars, licensing, I-Score / credit bureau integration rules, customer identity/OTP verification, debt burden caps, and consumer credit oversight. Non-consumer real estate conferences, routine administrative decrees, or general insurance are NOT relevant for FRA.
 - Competitor: news about Egyptian consumer finance & BNPL players (valU, MNT-Halan, Contact Financial, Aman, Souhoola, Sympl, blnk, Premium Card, B.Tech, Shahry, Fawry, Khazna, etc.).
   Focus specifically on:
   1) Offers posted on social media or websites (discounts, cashback, 0% interest, no down payment campaigns, promo codes). Set subcategory to "Offers & Promotions".
   2) News in market (new branch openings, new deals, strategic partnerships, expansions, mergers & acquisitions). Set subcategory to "Market Deals & Expansion".
-- Banking: retail banking credit facilities, bank lending to NBFIs, cost of borrowing
-- Financial Market: broader Egyptian financial sector developments, securitization bond markets
-- Economy: macroeconomic trends affecting consumer credit (inflation, EGP exchange rate, disposable income, subsidies)
-- Other: general topics that do not impact consumer finance
+- Consumer Finance: general consumer lending, BNPL trends, retail installment dynamics, household debt capacity
+- FinTech: digital onboarding, payments, open banking affecting retail lending
+- Banking: retail banking credit facilities, bank lending to NBFIs, cost of borrowing for consumer finance
+- Financial Market: broader Egyptian financial sector developments, securitization bond markets for NBFIs
+- Economy: macroeconomic trends DIRECTLY impacting consumer finance, retail installment credit demand, household disposable income, or debt burden in Egypt. Strictly exclude generic commodity/food prices (poultry, meat, vegetables, wheat, agriculture), shipping/freight costs (Black Sea, Red Sea), and broad macroeconomic commentary not tied directly to consumer financing or household debt burden.
+- Other: general topics that do not impact consumer finance, or out-of-scope institutions (such as Central Bank of Egypt).
 
 Relevance criteria:
-- RELEVANT: Directly impacts consumer financing demand, borrowing costs, regulatory compliance, competitor positioning, credit risk, or purchasing power in Egypt.
-- NOT RELEVANT: General politics, sports, entertainment, unrelated industrial/real estate corporate news, opinion without an underlying event, international news with no domestic Egyptian impact.
+- RELEVANT: Directly impacts consumer financing demand, retail borrowing costs, regulatory compliance under FRA, competitor positioning, credit risk, or consumer installment purchasing power in Egypt.
+- NOT RELEVANT / OUT OF SCOPE:
+  * Central Bank of Egypt (CBE) news, monetary policy decisions, and interest rate committee (MPC) statements are OUT OF SCOPE. Mark as is_relevant=false and category="Other".
+  * General food inflation, agricultural commodity prices, shipping/freight costs, and generic macro stories with no direct link to consumer lending/financing are OUT OF SCOPE (is_relevant=false).
+  * General politics, sports, entertainment, unrelated corporate news, opinion without an underlying event.
 
 Return ONLY valid JSON, no markdown, no explanation:
 {{
   "is_relevant": true/false,
-  "category": "CBE|FRA|Consumer Finance|Competitor|FinTech|Banking|Financial Market|Economy|Other",
+  "category": "FRA|Consumer Finance|Competitor|FinTech|Banking|Financial Market|Economy|Other",
   "subcategory": "string or null",
   "entities": ["entity1", "entity2"],
   "confidence": 0.0-1.0,
   "competitor_match": "competitor name or null",
-  "importance_score": 0-100 (90-100: CBE/FRA policy/rates/licensing; 75-89: major competitor moves/securitization/rules; 60-74: significant consumer finance/market developments; <60: minor)
+  "importance_score": 0-100 (90-100: FRA consumer finance regulations/licensing/enforcement; 75-89: major competitor moves/securitization/rules; 60-74: significant consumer finance/market developments; <60: minor)
 }}
 """
 
@@ -222,7 +226,7 @@ RULES & PRIORITIES:
    - Plain text only. No bullet points, no markdown headers, no conversational filler.
    - Deliver the key development in the first sentence and the primary bottom-line impact or deadline in the second sentence.
 
-2. REGULATORY ARTICLES (ESPECIALLY FRA & CBE):
+2. REGULATORY ARTICLES (ESPECIALLY FRA):
    - Keep regulatory summaries high-level and punchy: state the decree/circular number, the core mandate/rule, and the primary deadline or bottom-line implication for consumer finance / BNPL operators.
    - DO NOT list lengthy procedural steps, multi-point criteria, legal articles, or exhaustive registration requirements; executives will click "View Article" to read full decree details.
 
@@ -256,7 +260,7 @@ RULES & PRIORITIES:
    - "I-Score" (NEVER "i-score" or "iscore")
    - "InstaPay" (NEVER "Instapay")
    - "Meeza" (NEVER "Meza")
-   - Regulators: ALWAYS "CBE" (Central Bank of Egypt) and "FRA" (Financial Regulatory Authority).
+   - Regulators: ALWAYS "FRA" (Financial Regulatory Authority).
 """
 
 _SUMMARIZE_USER_TEMPLATE = """Summarize this news article factually:
@@ -355,7 +359,7 @@ You are an executive intelligence analyst evaluating financial news for the CEO 
 Score the article's strategic importance to the CEO on a scale of 0-100:
 
 Scoring guide:
-- 90-100: Mandatory CEO Attention. CBE interest rate decisions, FRA consumer finance regulatory mandates/circulars, capital adequacy changes, licensing actions, statutory credit caps.
+- 90-100: Mandatory CEO Attention. FRA consumer finance regulatory mandates/circulars, capital adequacy changes, licensing actions, statutory credit caps, enforcement orders.
 - 75-89: High Strategic Value. Consumer finance securitization issuances, major competitor moves (funding rounds, acquisitions, nationwide merchant deals by valU, Contact, Halan, Aman, etc.), I-Score credit bureau updates, e-KYC/digital signature rollouts.
 - 60-74: Meaningful Operational & Market Value. Consumer borrowing trends, inflation figures impacting disposable income, bank lending liquidity to NBFIs, competitor app/feature launches.
 - 40-59: Low-Medium. General banking updates, minor fintech features, broad economic commentary.
