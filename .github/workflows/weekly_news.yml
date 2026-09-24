@@ -1,4 +1,4 @@
-name: Weekly Financial News Digest
+name: Financial News Digest
 
 on:
   # Triggered by Microsoft Power Automate Scheduled Cloud Flow or manual GitHub UI dispatch
