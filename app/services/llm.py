@@ -71,9 +71,10 @@ Your task: analyse the provided article and return a JSON classification strictl
 Monitoring scope & categories:
 - Central Bank of Egypt (CBE): monetary policy, interest rates (corridor, lending/deposit rates), MPC decisions, banking regulations, liquidity
 - Financial Regulatory Authority (FRA): STRICTLY consumer-finance regulations, circulars, licensing, I-Score / credit bureau integration rules, customer identity/OTP verification, debt burden caps, and consumer credit oversight. Non-consumer real estate conferences, routine administrative decrees, or general insurance are NOT relevant for FRA.
-- Consumer Finance: BNPL, installments, consumer credit, retail lending, purchasing power, I-Score / credit reporting, debt recovery, delinquency rates
-- Competitor: news about Egyptian consumer finance & BNPL players (valU, MNT-Halan, Contact Financial, Aman, Souhoola, Sympl, blnk, Premium Card, B.Tech, Shahry, Khazna, Fawry, etc.)
-- FinTech: Egyptian fintech companies, digital lending, payments, InstaPay, mobile wallets, alternative credit scoring
+- Competitor: news about Egyptian consumer finance & BNPL players (valU, MNT-Halan, Contact Financial, Aman, Souhoola, Sympl, blnk, Premium Card, B.Tech, Shahry, Fawry, Khazna, etc.).
+  Focus specifically on:
+  1) Offers posted on social media or websites (discounts, cashback, 0% interest, no down payment campaigns, promo codes). Set subcategory to "Offers & Promotions".
+  2) News in market (new branch openings, new deals, strategic partnerships, expansions, mergers & acquisitions). Set subcategory to "Market Deals & Expansion".
 - Banking: retail banking credit facilities, bank lending to NBFIs, cost of borrowing
 - Financial Market: broader Egyptian financial sector developments, securitization bond markets
 - Economy: macroeconomic trends affecting consumer credit (inflation, EGP exchange rate, disposable income, subsidies)
@@ -226,7 +227,8 @@ RULES & PRIORITIES:
    - DO NOT list lengthy procedural steps, multi-point criteria, legal articles, or exhaustive registration requirements; executives will click "View Article" to read full decree details.
 
 3. COMPETITOR & MACRO ARTICLES:
-   - Highlight the central commercial move (partner, rate, capital round, tenure) or macro print (inflation/CPI figures) in 1 to 2 crisp sentences.
+   - For Competitor articles: strictly highlight either (a) commercial offer details (discount rate, cashback, 0% interest terms, promo channel) or (b) market news (new branch location, deal partners, investment size, expansion target) in 1 to 2 crisp sentences.
+   - For Macro articles: highlight key prints (inflation/CPI figures, FX rates) in 1 to 2 crisp sentences.
 
 4. SUBSTANCE & STUB CHECK:
    - If the source text contains factual data (such as inflation rates, CPI figures, monetary decisions, commercial partnerships, or regulatory decisions), ALWAYS provide a summary.

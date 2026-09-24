@@ -94,11 +94,19 @@ class RSSSearchCollector:
             {"query": "شركة درايف للتمويل الاستهلاكي فرصة", "lang": "ar"},
         ])
 
-        # Add competitor-specific queries
+        # Add competitor-specific queries targeting:
+        # 1. Offers, campaigns, and discounts posted on websites/social media
+        # 2. Market news (branch openings, new deals, partnerships, expansions)
         if competitor_names:
-            for cname in competitor_names[:12]:
+            for cname in competitor_names[:15]:
+                # 1. Offers & promotions
                 queries.append({
-                    "query": f'"{cname}" (تمويل OR تقسيط OR BNPL OR finance)',
+                    "query": f'"{cname}" (عروض OR عرض OR خصم OR خصومات OR "كاش باك" OR "بدون فوائد" OR "بدون مقدم" OR كود OR حملة OR offer OR promo OR cashback OR discount)',
+                    "lang": "ar",
+                })
+                # 2. Market news, branch openings, deals & partnerships
+                queries.append({
+                    "query": f'"{cname}" (فرع OR فروع OR افتتاح OR صفقة OR صفقات OR شراكة OR شراكات OR توسع OR تعاقد OR بروتوكول OR deal OR partnership OR branch OR expansion)',
                     "lang": "ar",
                 })
 

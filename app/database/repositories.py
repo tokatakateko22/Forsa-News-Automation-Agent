@@ -90,7 +90,8 @@ class CompetitorRepository:
             existing.aliases = competitor.aliases
             existing.website = competitor.website
             existing.priority = competitor.priority
-            existing.active = competitor.active
+            if competitor.active is not None:
+                existing.active = competitor.active
             return existing
         self._s.add(competitor)
         await self._s.flush()

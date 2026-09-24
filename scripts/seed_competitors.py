@@ -112,6 +112,15 @@ COMPETITORS: list[dict] = [
         "website": "https://blnk.ai",
         "priority": 1,
     },
+    {
+        "name": "Fawry",
+        "aliases": [
+            "Fawry", "Fawry Plus", "myFawry", "Fawry Consumer Finance",
+            "فوري", "فوري بلس", "ماي فوري", "فوري للتمويل الاستهلاكي", "فوري يومي",
+        ],
+        "website": "https://fawry.com",
+        "priority": 1,
+    },
     # ── Priority 2: Adjacent Consumer-Finance Players ─────────────────────────
     {
         "name": "Seven / Beltone Consumer Finance",
@@ -177,12 +186,6 @@ COMPETITORS: list[dict] = [
         "priority": 2,
     },
     # ── Priority 3: Adjacent Market Intelligence (Fintech, Payments, Banks) ───
-    {
-        "name": "Fawry",
-        "aliases": ["Fawry", "فوري", "Fawry Plus"],
-        "website": "https://fawry.com",
-        "priority": 3,
-    },
     {
         "name": "Paymob",
         "aliases": ["Paymob", "باي موب"],
@@ -262,13 +265,15 @@ async def seed_competitors() -> None:
         created = 0
         updated = 0
         for c in COMPETITORS:
-            comp = Competitor(**c)
+            c_data = dict(c)
+            c_data.setdefault("active", True)
+            comp = Competitor(**c_data)
             existing = await repo.upsert(comp)
             if existing.id is None:
                 created += 1
             else:
                 updated += 1
-    print(f"Done — seeded {len(COMPETITORS)} competitors (P1: 10, P2: 9, Adjacent: 12).")
+    print(f"Done — seeded {len(COMPETITORS)} competitors (P1: 11, P2: 9, Adjacent: 11).")
 
 
 if __name__ == "__main__":

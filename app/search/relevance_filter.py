@@ -48,6 +48,8 @@ _CONSUMER_FINANCE_PATTERNS = [
     r"تقسيط", r"التقسيط", r"شراء\s+الآن\s+وادفع\s+لاحق", r"قروض\s+شخصية",
     r"استعلام\s+ائتماني", r"آي\s+سكور", r"اي\s+سكور", r"توريق", r"سندات\s+توريق",
     r"الشمول\s+المالي", r"القوة\s+الشرائية", r"عبء\s+الدين",
+    r"عروض\s+(?:تقسيط|تمويل|شراء|كاش\s*باك)", r"بدون\s+فوائد", r"بدون\s+مقدم",
+    r"كاش\s*باك", r"\bcashback\b", r"\bzero\s+interest\b", r"\bno\s+down\s+payment\b",
 ]
 
 # ── 2. Forsa & Drive Finance ──────────────────────────────────────────────────
@@ -78,7 +80,8 @@ _COMPETITOR_PATTERNS = [
     r"\bsky\s+finance\b", r"سكاي\s+فاينانس",
     r"\bmogo\b(?:\s+egypt|\s+finance)", r"\bklivvr\b", r"كليفّر",
     r"\bmylo\b(?:\s+bnpl|\s+finance)", r"\btakka\b(?:\s+finance)",
-    r"\bfawry\b", r"\bmyfawry\b", r"فوري\s+للتمويل", r"شركة\s+فوري",
+    r"\bfawry\b", r"\bmyfawry\b", r"\bfawry\s+plus\b",
+    r"فوري\s+(?:للتمويل|بلس|بلاس|يومي|كاش|المالية)", r"شركة\s+فوري", r"تطبيق\s+(?:فوري|ماي\s*فوري)", r"ماي\s*فوري",
     r"\bpaymob\b", r"باي\s+موب",
     r"\bkhazna\b", r"خزنة\s+للتمويل",
     r"\bmoney\s+fellows\b", r"موني\s+فيلوز",

@@ -65,6 +65,37 @@ class TestArabicFalsePositives:
         assert cls.category == "Competitor"
         assert cls.competitor_match == "MNT-Halan"
 
+    def test_generic_fawry_adverb_not_classified_as_competitor(self):
+        # Linguistic idiom "وقفا فوريا" should not match company Fawry
+        art = make_article(
+            title="اليونان تؤيد وقفا فوريا لإطلاق النار في أوكرانيا",
+            content="دعت الحكومة اليونانية إلى وقف فوري للعمليات وبدء مفاوضات عاجلة",
+        )
+        cls = _deterministic_classify(art)
+        assert cls is None or cls.competitor_match != "Fawry"
+
+    def test_actual_fawry_partnership_matches_competitor_market_deals(self):
+        art = make_article(
+            title="مجموعة الفطيم وشركة فوري تعلنان عن شراكة استراتيجية وتوسع في التمويل",
+            content="أعلنت شركة فوري لتكنولوجيا المدفوعات والتمويل عن شراكة تجارية جديدة وافتتاح فرع رقمي",
+        )
+        cls = _deterministic_classify(art)
+        assert cls is not None
+        assert cls.category == "Competitor"
+        assert cls.competitor_match == "Fawry"
+        assert cls.subcategory == "Market Deals & Expansion"
+
+    def test_actual_fawry_offers_matches_competitor_offers_promotions(self):
+        art = make_article(
+            title="فوري بلس تطلق عروض تقسيط وكاش باك جديدة بمناسبة العام الجديد",
+            content="أعلنت فوري عن تقديم عروض تقسيط بدون فوائد وكاش باك لحاملي بطاقات ماي فوري",
+        )
+        cls = _deterministic_classify(art)
+        assert cls is not None
+        assert cls.category == "Competitor"
+        assert cls.competitor_match == "Fawry"
+        assert cls.subcategory == "Offers & Promotions"
+
 
 class TestRegulatorNoiseExclusion:
     def test_student_hackathon_excluded(self):

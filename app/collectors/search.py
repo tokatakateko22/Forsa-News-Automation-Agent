@@ -267,42 +267,56 @@ class SerpAPICompetitorCollector(NewsSourceCollector):
 
         selected = clean_terms[:4] if clean_terms else [self.competitor_name]
         or_terms = " OR ".join(f'"{term}"' for term in selected)
-        query = f"({or_terms}) (تمويل OR تقسيط OR BNPL OR finance)"
 
+        # Focused queries targeting:
+        # 1. Offers, promotional campaigns, discounts, cashback, 0% interest on websites & social media
+        # 2. Market news (branch openings, new deals, partnerships, expansions)
+        competitor_queries = [
+            f"({or_terms}) (عروض OR عرض OR خصم OR خصومات OR \"كاش باك\" OR \"بدون فوائد\" OR \"بدون مقدم\" OR كود OR برومو OR حملة OR offer OR promo OR discount OR cashback OR \"zero interest\")",
+            f"({or_terms}) (فرع OR فروع OR افتتاح OR صفقة OR صفقات OR شراكة OR شراكات OR توسع OR تعاقد OR بروتوكول OR deal OR partnership OR branch OR expansion)",
+        ]
+
+        seen_urls: set[str] = set()
         async with _COMPETITOR_SEMAPHORE:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                try:
-                    params = {
-                        "engine": "google_news",
-                        "q": query,
-                        "tbs": tbs,
-                        "api_key": self._api_key,
-                        "num": 15,
-                        "gl": "eg",
-                    }
-                    response = await client.get(SERPAPI_BASE, params=params)
-                    response.raise_for_status()
-                    data = response.json()
-                    results = data.get("news_results", [])
+                for query in competitor_queries:
+                    try:
+                        params = {
+                            "engine": "google_news",
+                            "q": query,
+                            "tbs": tbs,
+                            "api_key": self._api_key,
+                            "num": 15,
+                            "gl": "eg",
+                        }
+                        response = await client.get(SERPAPI_BASE, params=params)
+                        response.raise_for_status()
+                        data = response.json()
+                        results = data.get("news_results", [])
 
-                    for r in results:
-                        pub_date = self._parse_date(r.get("date", ""), end_time)
-                        if pub_date and pub_date < start_time:
-                            continue
-                        article = self._make_article(
-                            title=r.get("title", "").strip(),
-                            url=r.get("link", "").strip(),
-                            content=r.get("snippet", ""),
-                            published_at=pub_date,
+                        for r in results:
+                            url = r.get("link", "").strip()
+                            if not url or url in seen_urls:
+                                continue
+                            pub_date = self._parse_date(r.get("date", ""), end_time)
+                            if pub_date and pub_date < start_time:
+                                continue
+                            article = self._make_article(
+                                title=r.get("title", "").strip(),
+                                url=url,
+                                content=r.get("snippet", ""),
+                                published_at=pub_date,
+                            )
+                            if article.title and article.url:
+                                seen_urls.add(url)
+                                articles.append(article)
+                    except Exception as exc:
+                        log.warning(
+                            "serpapi.competitor_failed",
+                            competitor=self.competitor_name,
+                            query=query[:60],
+                            error=str(exc),
                         )
-                        if article.title and article.url:
-                            articles.append(article)
-                except Exception as exc:
-                    log.warning(
-                        "serpapi.competitor_failed",
-                        competitor=self.competitor_name,
-                        error=str(exc),
-                    )
 
         return articles
 

@@ -225,6 +225,29 @@ class TestRelevanceFilter(unittest.TestCase):
         self.assertTrue(is_rel)
         self.assertIn("competitor", topics)
 
+    def test_fawry_offers_and_deals_accepted(self):
+        art1 = Article(
+            title="فوري تعلن عن شراكة استراتيجية وتوسع في تمويل التجارة الرقمية",
+            url="https://example.com/fawry1",
+            source_name="Test",
+            content="أعلنت شركة فوري لتكنولوجيا البنوك والمدفوعات عن توقيع بروتوكول تعاون.",
+            language="ar",
+        )
+        is_rel1, topics1 = evaluate_article_relevance(art1)
+        self.assertTrue(is_rel1)
+        self.assertIn("competitor", topics1)
+
+        art2 = Article(
+            title="عروض كاش باك وتقسيط بدون فوائد بمناسبة العام الجديد",
+            url="https://example.com/fawry2",
+            source_name="Test",
+            content="أعلنت فوري بلس عن طرح عروض تقسيط بدون فوائد وكاش باك.",
+            language="ar",
+        )
+        is_rel2, topics2 = evaluate_article_relevance(art2)
+        self.assertTrue(is_rel2)
+        self.assertIn("competitor", topics2)
+
     def test_regulatory_cbe_accepted(self):
         art = Article(
             title="Central Bank of Egypt holds monetary policy meeting on interest rates",

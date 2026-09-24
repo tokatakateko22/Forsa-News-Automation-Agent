@@ -73,7 +73,8 @@ SCOPE_KEYWORDS = [
     "premium card", "بريميوم كارد",
     "shahry", "شهري للتمويل",
     "blnk", "بلنك للتمويل", "شركة بلنك",
-    "fawry", "myfawry", "فوري للتمويل", "شركة فوري",
+    "fawry", "myfawry", "fawry plus", "فوري للتمويل", "شركة فوري", "فوري بلس", "ماي فوري",
+    "عروض", "كاش باك", "بدون فوائد", "بدون مقدم",
     "paymob", "باي موب",
     "khazna", "خزنة للتمويل",
     "money fellows", "مني فيلوز",
@@ -162,6 +163,19 @@ async def _classify_one(article: Article) -> ArticleClassification:
             is_relevant=False,
             category="Other",
         )
+
+
+def _competitor_subcategory(norm_text: str) -> str:
+    """Determine whether competitor activity is 'Offers & Promotions' or 'Market Deals & Expansion'."""
+    offer_terms = [
+        "عروض", "عرض", "خصم", "خصومات", "كاش باك", "بدون فوائد", "بدون مقدم",
+        "كود خصم", "برومو", "حمله ترويج", "قسط علي", "تقسيط بدون",
+        "offer", "offers", "discount", "discounts", "cashback", "promo",
+        "zero interest", "no down payment", "sale", "promotional"
+    ]
+    if any(t in norm_text for t in offer_terms):
+        return "Offers & Promotions"
+    return "Market Deals & Expansion"
 
 
 def _deterministic_classify(article: Article) -> Optional[ArticleClassification]:
@@ -346,7 +360,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         return ArticleClassification(
             article_id=article.article_id,
             category="Competitor",
-            subcategory="Market Activity",
+            subcategory=_competitor_subcategory(norm_text),
             entities=["Souhoola"],
             is_relevant=True,
             importance_score=85,
@@ -365,7 +379,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         return ArticleClassification(
             article_id=article.article_id,
             category="Competitor",
-            subcategory="Market Activity",
+            subcategory=_competitor_subcategory(norm_text),
             entities=["MNT-Halan"],
             is_relevant=True,
             importance_score=85,
@@ -384,7 +398,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         return ArticleClassification(
             article_id=article.article_id,
             category="Competitor",
-            subcategory="Market Activity",
+            subcategory=_competitor_subcategory(norm_text),
             entities=["valU"],
             is_relevant=True,
             importance_score=85,
@@ -399,7 +413,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
             return ArticleClassification(
                 article_id=article.article_id,
                 category="Competitor",
-                subcategory="Market Activity",
+                subcategory=_competitor_subcategory(norm_text),
                 entities=["Aman"],
                 is_relevant=True,
                 importance_score=85,
@@ -413,7 +427,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         return ArticleClassification(
             article_id=article.article_id,
             category="Competitor",
-            subcategory="Market Activity",
+            subcategory=_competitor_subcategory(norm_text),
             entities=["Contact Financial"],
             is_relevant=True,
             importance_score=85,
@@ -427,7 +441,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         return ArticleClassification(
             article_id=article.article_id,
             category="Competitor",
-            subcategory="Market Activity",
+            subcategory=_competitor_subcategory(norm_text),
             entities=["Sympl"],
             is_relevant=True,
             importance_score=85,
@@ -441,7 +455,7 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
         return ArticleClassification(
             article_id=article.article_id,
             category="Competitor",
-            subcategory="Market Activity",
+            subcategory=_competitor_subcategory(norm_text),
             entities=["Blnk"],
             is_relevant=True,
             importance_score=85,
@@ -449,6 +463,41 @@ def _deterministic_classify(article: Article) -> Optional[ArticleClassification]
             confidence=0.95,
             competitor_match="Blnk",
         )
+
+    # Fawry (strict: requires company compound name or business context to avoid adverb 'فورياً'/'وقف فوري')
+    fawry_in_title = "فوري" in norm_title or "fawry" in norm_title or "myfawry" in norm_title
+    fawry_in_text = (
+        "شركه فوري" in norm_text or "شركة فوري" in norm_text
+        or "فوري بلس" in norm_text or "فوري للتمويل" in norm_text
+        or "ماي فوري" in norm_text or "fawry plus" in norm_text
+        or "fawry finance" in norm_text or "myfawry" in norm_text
+        or "فوري يومي" in norm_text or "كارت فوري" in norm_text
+    )
+    if fawry_in_title or fawry_in_text:
+        is_idiom = any(
+            idiom in norm_title
+            for idiom in ["وقفا فوري", "وقف فوري", "بشكل فوري", "ردع فوري", "تدخل فوري", "حل فوري", "تحرك فوري", "اجراء فوري"]
+        )
+        if not is_idiom and any(
+            w in norm_text for w in [
+                "تقسيط", "تمويل", "عروض", "عرض", "خصم", "شراكه", "شراكة", "فرع", "فروع",
+                "افتتاح", "صفقه", "صفقة", "كاش باك", "مدفوعات", "محفظه", "محفظة", "بطاقه", "بطاقة",
+                "كارت", "تطبيق", "بلس", "سهم", "توسع", "تعاقد", "ارباح", "ايرادات", "تحالف",
+                "installment", "finance", "financing", "offer", "discount", "branch",
+                "partnership", "deal", "cashback", "payment", "card", "app", "expansion"
+            ]
+        ):
+            return ArticleClassification(
+                article_id=article.article_id,
+                category="Competitor",
+                subcategory=_competitor_subcategory(norm_text),
+                entities=["Fawry"],
+                is_relevant=True,
+                importance_score=85,
+                relevance_score=95,
+                confidence=0.95,
+                competitor_match="Fawry",
+            )
 
     return None
 
