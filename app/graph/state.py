@@ -6,7 +6,7 @@ LangGraph AgentState — the shared state object passed between all pipeline nod
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional, TypedDict
+from typing import Any, NotRequired, Optional, TypedDict
 
 from app.models.article import Article, ArticleClassification
 from app.models.event import NewsEvent, EventSummary
@@ -47,6 +47,7 @@ class AgentState(TypedDict):
     started_at: datetime
     collection_start: datetime      # Start of the news retrieval window
     collection_end: datetime        # End of the news retrieval window (now)
+    lookback_days: NotRequired[Optional[int]]  # Lookback window in days (if specified)
     ignore_already_sent: bool       # Bypass DB sent-events check (for testing)
     force_search_fallback: bool     # Force fallback search mechanism (for testing)
 

@@ -17,6 +17,8 @@ from app.graph.nodes.format_email import (
     _event_html_block,
     _build_email,
     _build_no_news_email,
+    get_brief_descriptor,
+    _build_subject,
     CATEGORY_ORDER,
 )
 from app.models.event import NewsEvent, EventSummary
@@ -142,20 +144,65 @@ class TestCategoryOrdering:
 
 
 class TestNoNewsEmail:
-    def test_no_news_subject_contains_date(self):
-        subject, html, plain = _build_no_news_email("13 September 2026")
-        assert "13 September 2026" in subject
+    def test_no_news_subject_format(self):
+        subject, html, plain = _build_no_news_email("13 September 2026", days=1)
+        assert subject == "Consumer Finance Intelligence | Daily Brief — No Significant News"
 
     def test_no_news_body_factual(self):
-        _, _, plain = _build_no_news_email("13 September 2026")
+        _, _, plain = _build_no_news_email("13 September 2026", days=1)
         assert "No significant" in plain
         # Must NOT contain fake news or analysis
         assert "CBE" not in plain
         assert "interest rate" not in plain
+        assert "Forsa Financial Market News" not in plain
 
     def test_full_email_structure(self):
         events = [make_event()]
-        subject, html, plain = _build_email(events, "13 September 2026")
-        assert "Forsa Financial Market News" in plain
-        assert "13 September 2026" in plain
+        subject, html, plain = _build_email(events, "13 September 2026", days=1)
+        # Header block must be completely removed
+        assert "Forsa Financial Market News" not in plain
+        assert "Forsa Financial Market News" not in html
+        assert subject == "Consumer Finance Intelligence | Daily Brief"
         assert "Financial Regulatory Authority" in plain
+        assert "Financial Regulatory Authority" in html
+        # Plain text must start directly with the first section divider
+        assert plain.startswith("═" * 54)
+
+
+class TestDynamicBriefSubject:
+    def test_daily_brief_1_day(self):
+        assert get_brief_descriptor(1) == "Daily Brief"
+        subject = _build_subject(days=1)
+        assert subject == "Consumer Finance Intelligence | Daily Brief"
+
+    def test_weekly_brief_7_days(self):
+        assert get_brief_descriptor(7) == "Weekly Brief"
+        subject = _build_subject(days=7)
+        assert subject == "Consumer Finance Intelligence | Weekly Brief"
+
+    def test_monthly_brief_30_days(self):
+        assert get_brief_descriptor(30) == "Monthly Brief"
+        subject = _build_subject(days=30)
+        assert subject == "Consumer Finance Intelligence | Monthly Brief"
+
+    def test_biweekly_brief_14_days(self):
+        assert get_brief_descriptor(14) == "Bi-Weekly Brief"
+        subject = _build_subject(days=14)
+        assert subject == "Consumer Finance Intelligence | Bi-Weekly Brief"
+
+    def test_custom_days_fallback(self):
+        assert get_brief_descriptor(3) == "3-Day Brief"
+        assert _build_subject(days=3) == "Consumer Finance Intelligence | 3-Day Brief"
+        assert get_brief_descriptor(10) == "10-Day Brief"
+        assert _build_subject(days=10) == "Consumer Finance Intelligence | 10-Day Brief"
+
+    def test_build_email_uses_days(self):
+        events = [make_event()]
+        s1, _, _ = _build_email(events, days=1)
+        assert s1 == "Consumer Finance Intelligence | Daily Brief"
+
+        s7, _, _ = _build_email(events, days=7)
+        assert s7 == "Consumer Finance Intelligence | Weekly Brief"
+
+        s30, _, _ = _build_email(events, days=30)
+        assert s30 == "Consumer Finance Intelligence | Monthly Brief"

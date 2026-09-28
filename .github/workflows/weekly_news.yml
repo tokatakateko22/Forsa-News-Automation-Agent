@@ -67,6 +67,7 @@ jobs:
           EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER || 'power_automate' }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM || 'toka.ibrahim@Drive-Finance.Com' }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT || 'toka.ibrahim@Drive-Finance.Com' }}
+          EMAIL_SUBJECT_PREFIX: ${{ vars.EMAIL_SUBJECT_PREFIX || 'Consumer Finance Intelligence' }}
           POWER_AUTOMATE_WEBHOOK_URL: ${{ secrets.POWER_AUTOMATE_WEBHOOK_URL }}
           SCHEDULE_FREQUENCY: weekly
           SCHEDULE_DAY_OF_WEEK: sun

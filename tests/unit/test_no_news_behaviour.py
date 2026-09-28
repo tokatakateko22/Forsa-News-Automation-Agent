@@ -44,6 +44,7 @@ def _make_sample_state(
         "started_at": datetime.now(timezone.utc),
         "collection_start": datetime.now(timezone.utc),
         "collection_end": datetime.now(timezone.utc),
+        "lookback_days": None,
         "ignore_already_sent": False,
         "force_search_fallback": False,
         "raw_articles": [],
@@ -240,7 +241,7 @@ class TestImportantNewsExistPath:
 
         result = await format_email(state)
         assert result["email_subject"] != ""
-        assert "Financial Market News" in result["email_subject"]
+        assert "Consumer Finance Intelligence" in result["email_subject"]
         assert "The FRA issued new regulatory rules for non-bank lending." in result["email_plain"]
         assert "https://fra.gov.eg/news/1" in result["email_plain"]
         assert "The FRA issued new regulatory rules for non-bank lending." in result["email_html"]

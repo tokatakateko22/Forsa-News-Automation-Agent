@@ -92,7 +92,7 @@ class Settings(BaseSettings):
         description="Sender name and address shown in email From header",
     )
     email_subject_prefix: str = Field(
-        default="Forsa Financial Market News",
+        default="Consumer Finance Intelligence",
         description="Email subject line prefix",
     )
 

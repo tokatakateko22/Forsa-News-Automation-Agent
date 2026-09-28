@@ -24,6 +24,7 @@ def make_test_state(**kwargs) -> AgentState:
         "started_at": datetime.now(timezone.utc),
         "collection_start": datetime(2026, 9, 13, 6, 0, 0, tzinfo=timezone.utc),
         "collection_end": datetime(2026, 9, 14, 8, 0, 0, tzinfo=timezone.utc),
+        "lookback_days": None,
         "ignore_already_sent": False,
         "force_search_fallback": False,
         "raw_articles": [],

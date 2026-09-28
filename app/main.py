@@ -156,6 +156,7 @@ async def run_pipeline(
             "started_at": datetime.now(timezone.utc),
             "collection_start": collection_start,
             "collection_end": collection_end,
+            "lookback_days": lookback_days,
             "ignore_already_sent": ignore_already_sent,
             "force_search_fallback": force_fallback,
             "raw_articles": [],

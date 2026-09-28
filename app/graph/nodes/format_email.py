@@ -208,7 +208,74 @@ PILLARS = [
 ]
 
 
-def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]:
+def get_brief_descriptor(days: int | None = None) -> str:
+    """
+    Return executive brief descriptor based on lookback days.
+    - 1 day -> Daily Brief
+    - 7 days -> Weekly Brief
+    - 30 days -> Monthly Brief
+    - and so on.
+    """
+    if days is None:
+        return "Daily Brief"
+    if days <= 1:
+        return "Daily Brief"
+    elif 6 <= days <= 8:
+        return "Weekly Brief"
+    elif 13 <= days <= 15:
+        return "Bi-Weekly Brief"
+    elif 28 <= days <= 31:
+        return "Monthly Brief"
+    elif 58 <= days <= 62:
+        return "Bi-Monthly Brief"
+    elif 85 <= days <= 95:
+        return "Quarterly Brief"
+    elif 175 <= days <= 185:
+        return "Semi-Annual Brief"
+    elif 360 <= days <= 366:
+        return "Annual Brief"
+    else:
+        return f"{days}-Day Brief"
+
+
+def _resolve_days(state: AgentState) -> int:
+    """Determine effective lookback days from state metadata or schedule."""
+    lookback_days = state.get("lookback_days")
+    if lookback_days is not None and lookback_days > 0:
+        return lookback_days
+
+    col_start = state.get("collection_start")
+    col_end = state.get("collection_end")
+    if col_start and col_end:
+        span_seconds = (col_end - col_start).total_seconds()
+        calculated_days = round(span_seconds / 86400)
+        if calculated_days > 0:
+            return calculated_days
+
+    if settings.schedule_frequency == "weekly":
+        return 7
+    elif settings.schedule_frequency in ("daily", "twice_daily", "hourly"):
+        return 1
+
+    return 1
+
+
+def _build_subject(days: int | None = None, no_news: bool = False) -> str:
+    """Build dynamic email subject based on lookback days."""
+    descriptor = get_brief_descriptor(days)
+    prefix = settings.email_subject_prefix or "Consumer Finance Intelligence"
+    title = f"{prefix} | {descriptor}"
+    if no_news:
+        return f"{title} — No Significant News"
+    return title
+
+
+def _build_email(
+    events: list[NewsEvent],
+    run_date: str = "",
+    days: int | None = None,
+    subject: str | None = None,
+) -> tuple[str, str, str]:
     """
     Build subject, HTML body, and plain-text body from the list of events.
     Groups events into 3 executive pillars:
@@ -216,7 +283,8 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
       2. Financial Regulatory Authority (FRA) — Regulations & Market Oversight
       3. Market Backdrop & Economy
     """
-    subject = f"{settings.email_subject_prefix} — {run_date}"
+    if not subject:
+        subject = _build_subject(days=days, no_news=False)
 
     # Group events by pillar
     pillar_events: dict[str, list[NewsEvent]] = {p["id"]: [] for p in PILLARS}
@@ -231,11 +299,7 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
             pillar_events["market"].append(event)
 
     # ── Plain text ────────────────────────────────────────────────────────────
-    plain_lines = [
-        f"Forsa Financial Market News",
-        f"{run_date}",
-        "",
-    ]
+    plain_lines: list[str] = []
     for p in PILLARS:
         group = pillar_events[p["id"]]
         if not group:
@@ -260,8 +324,9 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
         group = [e for e in pillar_events[p["id"]] if e.summary]
         if not group:
             continue
+        top_margin = "0" if not html_sections else "28px"
         section_heading = f"""
-<div style="margin:28px 0 12px 0;padding-bottom:6px;border-bottom:2px solid #2b6cb0;">
+<div style="margin:{top_margin} 0 12px 0;padding-bottom:6px;border-bottom:2px solid #2b6cb0;">
   <h2 style="margin:0;font-size:15px;color:#2b6cb0;text-transform:uppercase;letter-spacing:0.5px;">
     {p['emoji']} {p['title']}
   </h2>
@@ -278,10 +343,6 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
   <title>{subject}</title>
 </head>
 <body style="font-family:Arial,Helvetica,sans-serif;max-width:720px;margin:0 auto;padding:20px;color:#2d3748;">
-  <div style="border-bottom:3px solid #1a365d;padding-bottom:12px;margin-bottom:20px;">
-    <h1 style="margin:0;font-size:22px;color:#1a365d;">Forsa Financial Market News</h1>
-    <p style="margin:4px 0 0 0;font-size:13px;color:#718096;">{run_date}</p>
-  </div>
   {"".join(html_sections)}
   <div style="border-top:1px solid #e2e8f0;margin-top:28px;padding-top:12px;
               font-size:11px;color:#a0aec0;text-align:center;">
@@ -293,11 +354,15 @@ def _build_email(events: list[NewsEvent], run_date: str) -> tuple[str, str, str]
     return subject, html_body, plain_body
 
 
-def _build_no_news_email(run_date: str) -> tuple[str, str, str]:
+def _build_no_news_email(
+    run_date: str = "",
+    days: int | None = None,
+    subject: str | None = None,
+) -> tuple[str, str, str]:
     """Build a minimal email for when no significant news was found."""
-    subject = f"{settings.email_subject_prefix} — {run_date} — No Significant News"
+    if not subject:
+        subject = _build_subject(days=days, no_news=True)
     plain = (
-        f"Forsa Financial Market News\n{run_date}\n\n"
         "No significant Egyptian financial or consumer-finance news was identified "
         "in the monitoring window.\n\n"
         "━" * 54 + "\n"
@@ -305,12 +370,16 @@ def _build_no_news_email(run_date: str) -> tuple[str, str, str]:
     )
     html = f"""<!DOCTYPE html>
 <html lang="en">
-<body style="font-family:Arial,Helvetica,sans-serif;max-width:700px;margin:0 auto;padding:20px;">
-  <h1 style="color:#1a365d;">Forsa Financial Market News</h1>
-  <p style="color:#718096;">{run_date}</p>
-  <p style="color:#4a5568;">No significant Egyptian financial or consumer-finance news was
-  identified in the monitoring window.</p>
-  <p style="font-size:11px;color:#a0aec0;">Automated news digest · Do not reply</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>{subject}</title>
+</head>
+<body style="font-family:Arial,Helvetica,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#2d3748;">
+  <p style="color:#4a5568;margin-top:0;">No significant Egyptian financial or consumer-finance news was identified in the monitoring window.</p>
+  <div style="border-top:1px solid #e2e8f0;margin-top:20px;padding-top:10px;font-size:11px;color:#a0aec0;">
+    Automated news digest · Do not reply
+  </div>
 </body>
 </html>"""
     return subject, normalize_brand_spellings(html), normalize_brand_spellings(plain)
@@ -323,6 +392,8 @@ async def format_email(state: AgentState) -> AgentState:
     """
     important_events = state.get("important_events", [])
     tz = pytz.timezone(settings.timezone)
+
+    days = _resolve_days(state)
 
     col_start = state.get("collection_start")
     col_end = state.get("collection_end")
@@ -356,12 +427,12 @@ async def format_email(state: AgentState) -> AgentState:
             "email_sent": False,
         }
 
-    log.info("node.format_email.start", events=len(important_events))
+    log.info("node.format_email.start", events=len(important_events), days=days)
 
     if important_events:
-        subject, html, plain = _build_email(important_events, run_date)
+        subject, html, plain = _build_email(important_events, run_date=run_date, days=days)
     else:
-        subject, html, plain = _build_no_news_email(run_date)
+        subject, html, plain = _build_no_news_email(run_date=run_date, days=days)
 
     log.info("node.format_email.done", subject=subject)
 
@@ -388,9 +459,10 @@ async def handle_no_news(state: AgentState) -> AgentState:
     """
     tz = pytz.timezone(settings.timezone)
     run_date = datetime.now(tz).strftime("%d %B %Y")
+    days = _resolve_days(state)
 
     if settings.no_news_behaviour == "send_empty":
-        subject, html, plain = _build_no_news_email(run_date)
+        subject, html, plain = _build_no_news_email(run_date=run_date, days=days)
         return {
             **state,
             "important_events": [],
