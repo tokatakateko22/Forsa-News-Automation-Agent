@@ -66,10 +66,23 @@ class EmailService:
 
         payload = {
             "to": to,
+            "To": to,
+            "recipient": to,
+            "Recipient": to,
             "subject": subject,
+            "Subject": subject,
+            "title": subject,
+            "Title": subject,
+            "email_subject": subject,
+            "Email_Subject": subject,
+            "emailSubject": subject,
             "html_body": html_body,
+            "htmlBody": html_body,
+            "body": html_body,
+            "Body": html_body,
             "plain_body": plain_body,
             "from": self._from,
+            "From": self._from,
         }
         resp = httpx.post(
             self._power_automate_webhook_url,
