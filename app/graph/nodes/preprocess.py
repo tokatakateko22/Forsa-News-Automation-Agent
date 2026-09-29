@@ -136,7 +136,7 @@ async def _fetch_full_text(client: httpx.AsyncClient, url: str) -> str:
         for div in soup.find_all("div"):
             classes = div.get("class")
             if classes:
-                classes_str = " ".join(classes) if isinstance(classes, list) else str(classes)
+                classes_str = " ".join(classes) if isinstance(classes, list) else classes
                 if any(k in classes_str.lower() for k in ("content", "article", "entry", "post", "story", "detail")):
                     found_div = div
                     break
