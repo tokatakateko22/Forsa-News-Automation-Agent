@@ -21,7 +21,7 @@ on:
       recipient_email:
         description: 'Recipient email address'
         required: false
-        default: 'tokaabdelghafar123@gmail.com'
+        default: 'toka.ibrahim@drive-finance.com'
       triggered_by:
         description: 'Triggering source identifier (e.g., power_automate)'
         required: false

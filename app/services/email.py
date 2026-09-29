@@ -12,6 +12,7 @@ Sends the formatted digest email to the CEO.
 from __future__ import annotations
 
 import email.utils
+import re
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
@@ -55,6 +56,14 @@ class EmailService:
         _, addr = email.utils.parseaddr(addr_str)
         return addr.strip() if addr else addr_str.strip()
 
+    @staticmethod
+    def _parse_recipients(to: str) -> list[str]:
+        """Parse comma- or semicolon-separated email recipient string into a list of clean email addresses."""
+        if not to:
+            return []
+        parts = [p.strip() for p in re.split(r"[,;]+", to) if p.strip()]
+        return [EmailService._extract_email_address(p) for p in parts if p]
+
     def _send_power_automate(
         self, subject: str, html_body: str, plain_body: str, to: str
     ) -> bool:
@@ -64,11 +73,17 @@ class EmailService:
                 "Power Automate provider requires POWER_AUTOMATE_WEBHOOK_URL to be set in .env."
             )
 
+        recipients_list = self._parse_recipients(to)
+        # Power Automate / Office 365 Outlook connector accepts semicolon-separated addresses
+        formatted_to = "; ".join(recipients_list) if recipients_list else to
+
         payload = {
-            "to": to,
-            "To": to,
-            "recipient": to,
-            "Recipient": to,
+            "to": formatted_to,
+            "To": formatted_to,
+            "recipient": formatted_to,
+            "Recipient": formatted_to,
+            "recipients": recipients_list if recipients_list else [to],
+            "Recipients": recipients_list if recipients_list else [to],
             "subject": subject,
             "Subject": subject,
             "title": subject,
@@ -93,7 +108,7 @@ class EmailService:
             log.error("email.power_automate_failed", status=resp.status_code, body=resp.text)
             resp.raise_for_status()
 
-        log.info("email.sent_power_automate", to=to, subject=subject)
+        log.info("email.sent_power_automate", to=formatted_to, subject=subject)
         return True
 
     def _get_microsoft_access_token(self) -> str:
@@ -124,6 +139,12 @@ class EmailService:
         clean_from = self._extract_email_address(self._from)
         token = self._get_microsoft_access_token()
 
+        recipients_list = self._parse_recipients(to) or [to]
+        to_recipients = [
+            {"emailAddress": {"address": addr}}
+            for addr in recipients_list
+        ]
+
         send_url = f"https://graph.microsoft.com/v1.0/users/{clean_from}/sendMail"
         headers = {
             "Authorization": f"Bearer {token}",
@@ -136,13 +157,7 @@ class EmailService:
                     "contentType": "HTML",
                     "content": html_body,
                 },
-                "toRecipients": [
-                    {
-                        "emailAddress": {
-                            "address": to,
-                        }
-                    }
-                ],
+                "toRecipients": to_recipients,
             },
             "saveToSentItems": True,
         }
@@ -166,10 +181,12 @@ class EmailService:
         if not self._host or not self._user:
             raise ValueError("SMTP email provider requires SMTP_HOST and SMTP_USER to be set.")
 
+        recipients_list = self._parse_recipients(to) or [to]
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = self._from
-        msg["To"] = to
+        msg["To"] = ", ".join(recipients_list)
 
         # Attach plain text first (fallback), then HTML
         msg.attach(MIMEText(plain_body, "plain", "utf-8"))
@@ -182,12 +199,12 @@ class EmailService:
                 server.starttls(context=context)
                 if self._user and self._pass:
                     server.login(self._user, self._pass)
-                server.sendmail(self._from, [to], msg.as_string())
+                server.sendmail(self._from, recipients_list, msg.as_string())
         else:
             with smtplib.SMTP_SSL(self._host, self._port, timeout=30) as server:
                 if self._user and self._pass:
                     server.login(self._user, self._pass)
-                server.sendmail(self._from, [to], msg.as_string())
+                server.sendmail(self._from, recipients_list, msg.as_string())
 
         log.info("email.sent_smtp", to=to, subject=subject)
         return True
