@@ -28,7 +28,7 @@ Graph topology:
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
@@ -49,7 +49,9 @@ def build_graph() -> CompiledStateGraph:
     Construct and compile the Forsa News Agent LangGraph pipeline.
     Returns a compiled graph ready to invoke.
     """
-    builder = StateGraph(AgentState)
+    # cast(Any, AgentState) satisfies LangGraph's internal StateLike protocol bound
+    # (TypedDictLikeV1 | TypedDictLikeV2) across static type checkers (Pyrefly/Pyright/Mypy).
+    builder = StateGraph(cast(Any, AgentState))
 
     # ── Register nodes ────────────────────────────────────────────────────────
     builder.add_node("collect_news", collect_news)
