@@ -19,7 +19,7 @@ CEO output NEVER contains:
   - Business impact analysis
   - Recommendations
 """
-from typing import Any
+from typing import Any, TypedDict
 import uuid
 from datetime import datetime, timezone
 
@@ -185,8 +185,15 @@ def _event_html_block(event: NewsEvent) -> str:
 """
 
 
+class Pillar(TypedDict):
+    id: str
+    title: str
+    emoji: str
+    categories: list[str]
+
+
 # Executive Pillars: Competitor & Consumer Finance -> FRA -> Market Backdrop & Economy
-PILLARS = [
+PILLARS: list[Pillar] = [
     {
         "id": "competitors",
         "title": "Competitor Intelligence & Consumer Finance",
