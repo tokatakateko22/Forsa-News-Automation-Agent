@@ -396,22 +396,221 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .tag-purple { background: #f3e8ff; color: #7e22ce; }
   .tag-gray { background: #f1f5f9; color: #475569; }
 
-  /* Flow Diagram */
-  .flow-diagram {
-    background: #0a192f;
-    color: #f8fafc;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin: 8px 0;
-    font-family: 'Consolas', monospace;
-    font-size: 7.5pt;
-    line-height: 1.45;
+  /* LangGraph Modern Visual Pipeline Component */
+  .langgraph-pipeline-box {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 7px 9px;
+    margin: 6px 0 8px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   }
 
-  .flow-diagram span.hl { color: #38bdf8; font-weight: bold; }
-  .flow-diagram span.kw { color: #f472b6; font-weight: bold; }
-  .flow-diagram span.cm { color: #94a3b8; }
-  .flow-diagram span.sc { color: #4ade80; }
+  .pipeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 3px;
+    margin-bottom: 5px;
+  }
+
+  .pipeline-title {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #0a192f;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+  }
+
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    background: #2563eb;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .pipeline-badge {
+    font-size: 6.8pt;
+    color: #64748b;
+  }
+
+  .pipeline-phase-label {
+    font-size: 6.3pt;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 3px 0 2px 0;
+  }
+
+  .pipeline-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pipeline-terminal {
+    background: #0a192f;
+    color: #ffffff;
+    font-size: 6.8pt;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 12px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .terminal-green {
+    background: #15803d;
+  }
+
+  .pipeline-arrow {
+    color: #94a3b8;
+    font-size: 8pt;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+
+  .arrow-green {
+    color: #16a34a;
+  }
+
+  .pipeline-node {
+    flex: 1;
+    background: #ffffff;
+    border: 1.2px solid #cbd5e1;
+    border-radius: 5px;
+    padding: 3px 6px;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  .node-blue {
+    border-color: #3b82f6;
+    border-left: 3px solid #2563eb;
+  }
+
+  .node-purple {
+    border-color: #a855f7;
+    border-left: 3px solid #7c3aed;
+  }
+
+  .node-amber {
+    border-color: #f59e0b;
+    border-left: 3px solid #d97706;
+    background: #fffbeb;
+  }
+
+  .node-green {
+    border-color: #22c55e;
+    border-left: 3px solid #16a34a;
+  }
+
+  .node-tag {
+    font-size: 5.6pt;
+    font-weight: 700;
+    padding: 0.5px 3.5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-bottom: 1px;
+  }
+
+  .node-name {
+    font-family: 'Consolas', monospace;
+    font-size: 7.2pt;
+    font-weight: 700;
+    color: #0a192f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .node-desc {
+    font-size: 6.1pt;
+    color: #64748b;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .row-transition {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px 0;
+  }
+
+  .transition-badge {
+    font-size: 5.9pt;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+
+  .branch-container {
+    display: flex;
+    gap: 5px;
+    margin-top: 3px;
+    align-items: stretch;
+  }
+
+  .branch-main {
+    flex: 3;
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    border-radius: 5px;
+    padding: 3px 5px;
+  }
+
+  .branch-alt {
+    flex: 1.1;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    border-radius: 5px;
+    padding: 3px 5px;
+  }
+
+  .branch-pill {
+    font-size: 5.8pt;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 2px;
+  }
+
+  .pill-green {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .pill-amber {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  .alt-node-title {
+    font-family: 'Consolas', monospace;
+    font-size: 6.8pt;
+    font-weight: 700;
+    color: #9a3412;
+  }
+
+  .alt-node-desc {
+    font-size: 5.7pt;
+    color: #78350f;
+    line-height: 1.2;
+  }
 
   ul, ol {
     margin-top: 2px;
@@ -661,21 +860,123 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       The core pipeline is implemented as a compiled state graph using <strong>LangGraph</strong>. Execution moves deterministically through 9 specialized functional nodes, accumulating verified metadata in a strongly-typed state object (<code>AgentState</code>).
     </p>
 
-    <div class="flow-diagram">
-<span class="kw">START</span> ──► <span class="hl">[1. collect_news]</span> ──► <span class="hl">[2. preprocess_news]</span> ──► <span class="hl">[3. classify_articles]</span>
-                 │
-                 ▼
-<span class="hl">[4. deduplicate_articles]</span> ──► <span class="hl">[5. verify_sources]</span> ──► <span class="hl">[6. filter_important_news]</span>
-                                                                 │
-                                ┌────────────────────────────────┴────────────────────────────────┐
-                                ▼ (has_news)                                                     ▼ (no_news)
-                      <span class="sc">[7. summarize_news]</span>                                               <span class="cm">[handle_no_news]</span>
-                                │                                                                 │
-                                ▼                                                                 ├──► (skip mode) ──► <span class="kw">END</span>
-                      <span class="hl">[8. format_email]</span> ◄─────────────────────────────────────────────────────────┘    (send_empty mode)
-                                │
-                                ▼
-                       <span class="hl">[9. send_email]</span> ──► <span class="kw">END</span>
+    <div class="langgraph-pipeline-box">
+      <div class="pipeline-header">
+        <div class="pipeline-title">
+          <span class="pulse-dot"></span>
+          <span>LangGraph Compiled Execution Pipeline</span>
+        </div>
+        <div class="pipeline-badge">Stateful Execution • Strongly-Typed <code>AgentState</code></div>
+      </div>
+
+      <!-- ROW 1: INGESTION & CLASSIFICATION -->
+      <div class="pipeline-phase-label">Phase 1 • News Ingestion, Cleaning &amp; Multi-Stage Classification</div>
+      <div class="pipeline-row">
+        <div class="pipeline-terminal">START</div>
+        <div class="pipeline-arrow">➔</div>
+        <div class="pipeline-node node-blue">
+          <div class="node-top-bar">
+            <span class="node-tag tag-blue">STAGE 1</span>
+          </div>
+          <div class="node-name">collect_news</div>
+          <div class="node-desc">FRA Portal • SerpAPI • Fallback RSS</div>
+        </div>
+        <div class="pipeline-arrow">➔</div>
+        <div class="pipeline-node node-blue">
+          <div class="node-top-bar">
+            <span class="node-tag tag-blue">STAGE 2</span>
+          </div>
+          <div class="node-name">preprocess_news</div>
+          <div class="node-desc">Clean HTML • Mojibake • Hydration</div>
+        </div>
+        <div class="pipeline-arrow">➔</div>
+        <div class="pipeline-node node-purple">
+          <div class="node-top-bar">
+            <span class="node-tag tag-purple">STAGE 3</span>
+          </div>
+          <div class="node-name">classify_articles</div>
+          <div class="node-desc">Regex Pre-Filter + Gemini Flash</div>
+        </div>
+      </div>
+
+      <div class="row-transition">
+        <div class="transition-badge">▼ Flow into Deduplication, Provenance Tiering &amp; Routing</div>
+      </div>
+
+      <!-- ROW 2: DEDUPLICATION, VERIFICATION & ROUTING -->
+      <div class="pipeline-phase-label">Phase 2 • Event Clustering, Authority Verification &amp; Importance Router</div>
+      <div class="pipeline-row">
+        <div class="pipeline-node node-blue">
+          <div class="node-top-bar">
+            <span class="node-tag tag-blue">STAGE 4</span>
+          </div>
+          <div class="node-name">deduplicate_articles</div>
+          <div class="node-desc">5-Signal Cascade &amp; Topic Guard</div>
+        </div>
+        <div class="pipeline-arrow">➔</div>
+        <div class="pipeline-node node-blue">
+          <div class="node-top-bar">
+            <span class="node-tag tag-blue">STAGE 5</span>
+          </div>
+          <div class="node-name">verify_sources</div>
+          <div class="node-desc">Tier 1 Official • Verified Media</div>
+        </div>
+        <div class="pipeline-arrow">➔</div>
+        <div class="pipeline-node node-amber">
+          <div class="node-top-bar">
+            <span class="node-tag tag-amber">STAGE 6 • ROUTER</span>
+          </div>
+          <div class="node-name">filter_important_news</div>
+          <div class="node-desc">Score ≥ 60 &amp; sent_news Ledger</div>
+        </div>
+      </div>
+
+      <!-- ROW 3: CONDITIONAL BRANCHING -->
+      <div class="branch-container">
+        <!-- Branch A: has_news -->
+        <div class="branch-main">
+          <div class="branch-pill pill-green">✔ CONDITIONAL EDGE: [has_news] (Importance ≥ 60 &amp; Unsent)</div>
+          <div class="pipeline-row" style="margin-top: 2px;">
+            <div class="pipeline-node node-green">
+              <div class="node-top-bar">
+                <span class="node-tag tag-green">STAGE 7</span>
+              </div>
+              <div class="node-name">summarize_news</div>
+              <div class="node-desc">Gemini Facts &amp; Brands</div>
+            </div>
+            <div class="pipeline-arrow arrow-green">➔</div>
+            <div class="pipeline-node node-green">
+              <div class="node-top-bar">
+                <span class="node-tag tag-green">STAGE 8</span>
+              </div>
+              <div class="node-name">format_email</div>
+              <div class="node-desc">Urgency Hierarchy &amp; HTML</div>
+            </div>
+            <div class="pipeline-arrow arrow-green">➔</div>
+            <div class="pipeline-node node-green">
+              <div class="node-top-bar">
+                <span class="node-tag tag-green">STAGE 9</span>
+              </div>
+              <div class="node-name">send_email</div>
+              <div class="node-desc">Power Automate + DB Ledger</div>
+            </div>
+            <div class="pipeline-arrow arrow-green">➔</div>
+            <div class="pipeline-terminal terminal-green">END</div>
+          </div>
+        </div>
+
+        <!-- Branch B: no_news -->
+        <div class="branch-alt">
+          <div class="branch-pill pill-amber">✖ [no_news]</div>
+          <div class="alt-node">
+            <div class="alt-node-title">handle_no_news</div>
+            <div class="alt-node-desc">
+              • <code>skip</code> ➔ Silent END<br>
+              • <code>send_empty</code> ➔ format
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- STAGE 1 -->
