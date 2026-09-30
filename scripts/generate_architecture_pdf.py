@@ -1,0 +1,1374 @@
+"""
+scripts/generate_architecture_pdf.py
+────────────────────────────────────
+Generates a publication-grade, 8-page executive architectural guide in natural English
+explaining how the Forsa Financial News Monitoring Agent works.
+
+Key Architectural Updates:
+- Operational Cadence: Daily active execution + Weekly consolidation via GitHub Actions.
+- Adaptable Footers: Context-aware footer on every page detailing the active chapter,
+  pipeline stages, and domain focus for that specific page.
+
+Compiles via headless Google Chrome into:
+d:\\Tasks\\Forsa News Agent\\Forsa_News_Agent_How_It_Works.pdf
+"""
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_HTML = BASE_DIR / "scripts" / "architecture_doc.html"
+OUTPUT_PDF = BASE_DIR / "Forsa_News_Agent_How_It_Works.pdf"
+CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
+HTML_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Forsa Financial News Monitoring Agent - Architecture & Operational Guide</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm 13mm 14mm;
+  }
+
+  *, *:before, *:after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    line-height: 1.45;
+    font-size: 8.8pt;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page {
+    page-break-after: always;
+    break-after: page;
+    box-sizing: border-box;
+    position: relative;
+    padding-bottom: 20px;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Running Header & Adaptable Footer */
+  .page-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+    font-size: 7.5pt;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .page-bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 5px;
+    font-size: 7.2pt;
+    color: #64748b;
+    line-height: 1.2;
+  }
+
+  .footer-left {
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .footer-center {
+    color: #1e3a8a;
+    font-weight: 600;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    font-size: 6.9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .footer-right {
+    font-weight: 600;
+    color: #475569;
+  }
+
+  /* Cover Banner */
+  .cover-header {
+    background: linear-gradient(135deg, #0a192f 0%, #1e3a8a 60%, #0284c7 100%);
+    color: #ffffff;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 11px;
+    box-shadow: 0 4px 10px rgba(10, 25, 47, 0.15);
+  }
+
+  .badge-tag {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #e0f2fe;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+  }
+
+  .cover-title {
+    font-size: 18.5pt;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 4px 0;
+    color: #ffffff;
+  }
+
+  .cover-subtitle {
+    font-size: 9.5pt;
+    font-weight: 400;
+    color: #bae6fd;
+    margin: 0 0 10px 0;
+    line-height: 1.35;
+  }
+
+  .cover-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+    padding-top: 8px;
+    font-size: 7.5pt;
+    color: #e2e8f0;
+  }
+
+  .cover-meta strong {
+    color: #ffffff;
+  }
+
+  /* Headings */
+  h1 {
+    font-size: 13.5pt;
+    font-weight: 800;
+    color: #0a192f;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 4px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h1 .section-num {
+    background: #0a192f;
+    color: #ffffff;
+    font-size: 8.5pt;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  h2 {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+
+  h3 {
+    font-size: 9.2pt;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 10px;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 7px;
+    text-align: justify;
+  }
+
+  /* Callout Boxes */
+  .callout {
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-size: 8.5pt;
+  }
+
+  .callout-blue {
+    background: #f0f7ff;
+    border-left: 3.5px solid #2563eb;
+    color: #1e3a8a;
+  }
+
+  .callout-amber {
+    background: #fffbeb;
+    border-left: 3.5px solid #d97706;
+    color: #92400e;
+  }
+
+  .callout-emerald {
+    background: #ecfdf5;
+    border-left: 3.5px solid #059669;
+    color: #065f46;
+  }
+
+  .callout-title {
+    font-weight: 700;
+    font-size: 8.8pt;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Card Grid */
+  .grid-2 {
+    display: flex;
+    gap: 10px;
+    margin: 8px 0;
+  }
+
+  .grid-2 > div {
+    flex: 1;
+  }
+
+  .grid-3 {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+  }
+
+  .grid-3 > div {
+    flex: 1;
+  }
+
+  .card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 9px 11px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .card-header {
+    font-weight: 700;
+    font-size: 9pt;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Stage Cards */
+  .stage-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    margin-bottom: 9px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  }
+
+  .stage-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 6px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stage-title {
+    font-weight: 700;
+    font-size: 9pt;
+    color: #0a192f;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stage-num-badge {
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 7pt;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .stage-node-badge {
+    font-family: 'Consolas', monospace;
+    font-size: 7.2pt;
+    background: #e2e8f0;
+    color: #334155;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+
+  .stage-body {
+    padding: 8px 10px;
+  }
+
+  .stage-details {
+    display: flex;
+    gap: 12px;
+    margin-top: 5px;
+    font-size: 7.8pt;
+    color: #64748b;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 4px;
+  }
+
+  .stage-detail-item strong {
+    color: #334155;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 7px 0;
+    font-size: 8.2pt;
+  }
+
+  th {
+    background: #0a192f;
+    color: #ffffff;
+    text-align: left;
+    padding: 5px 8px;
+    font-weight: 600;
+    font-size: 7.8pt;
+    letter-spacing: 0.3px;
+  }
+
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+
+  /* Badges */
+  .tag {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 7.2pt;
+    font-weight: 600;
+  }
+
+  .tag-green { background: #dcfce7; color: #15803d; }
+  .tag-red { background: #fee2e2; color: #b91c1c; }
+  .tag-blue { background: #dbeafe; color: #1d4ed8; }
+  .tag-amber { background: #fef3c7; color: #b45309; }
+  .tag-purple { background: #f3e8ff; color: #7e22ce; }
+  .tag-gray { background: #f1f5f9; color: #475569; }
+
+  /* Flow Diagram */
+  .flow-diagram {
+    background: #0a192f;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+    font-family: 'Consolas', monospace;
+    font-size: 7.5pt;
+    line-height: 1.45;
+  }
+
+  .flow-diagram span.hl { color: #38bdf8; font-weight: bold; }
+  .flow-diagram span.kw { color: #f472b6; font-weight: bold; }
+  .flow-diagram span.cm { color: #94a3b8; }
+  .flow-diagram span.sc { color: #4ade80; }
+
+  ul, ol {
+    margin-top: 2px;
+    margin-bottom: 6px;
+    padding-left: 18px;
+  }
+
+  li {
+    margin-bottom: 2px;
+  }
+
+  code {
+    font-family: 'Consolas', monospace;
+    font-size: 8pt;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #0a192f;
+  }
+
+  .toc-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 2.5px 0;
+    border-bottom: 1px dotted #cbd5e1;
+    font-size: 8.1pt;
+  }
+
+  .toc-item strong {
+    color: #0a192f;
+  }
+</style>
+</head>
+<body>
+
+  <!-- =========================================================================
+       PAGE 1: COVER & EXECUTIVE PURPOSE
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Executive Architecture &amp; Operational Guide</div>
+    </div>
+
+    <div class="cover-header">
+      <div class="badge-tag">Production System Documentation • Version 2.1</div>
+      <div class="cover-title">Forsa Financial News Monitoring Agent</div>
+      <div class="cover-subtitle">
+        How the Autonomous, Headless AI Intelligence System Gathers, Filters, Deduplicates, Verifies, and Delivers Executive Briefings for Consumer Finance Leadership
+      </div>
+      <div class="cover-meta">
+        <div><strong>Organization:</strong> Forsa (Drive Finance), Cairo, Egypt</div>
+        <div><strong>Regulatory Domain:</strong> FRA Law No. 18 of 2020</div>
+        <div><strong>Engine:</strong> LangGraph State Machine</div>
+        <div><strong>Active Schedule:</strong> Daily Execution (Morning Cadence)</div>
+        <div><strong>Configurable Via GitHub Actions:</strong> Weekly Consolidated Digest</div>
+      </div>
+    </div>
+
+    <h1><span class="section-num">1</span> Executive Summary &amp; Core Purpose</h1>
+    <p>
+      The <strong>Forsa Financial News Monitoring Agent</strong> is an autonomous, production-grade artificial intelligence system engineered specifically for the Chief Executive Officer and Executive Committee of <strong>Forsa</strong> (Drive Finance), one of Egypt's premier consumer finance and Buy-Now-Pay-Later (BNPL) institutions.
+    </p>
+    <p>
+      The agent actively runs on a <strong>daily automation schedule</strong>, monitoring Egyptian consumer lending news, competitor moves, and Financial Regulatory Authority (FRA) announcements as they unfold every morning. In addition, via <strong>GitHub Actions</strong>, the system can be configured or dispatched to generate a <strong>weekly consolidated digest</strong>, aggregating and synthesizing the entire 7-day picture for Sunday executive committee meetings.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header" style="color: #b91c1c;">
+          <span>⚠️ The Information Bottleneck</span>
+        </div>
+        <ul style="font-size: 8.2pt; padding-left: 15px; margin: 0;">
+          <li><strong>Information Overload:</strong> Hundreds of irrelevant daily articles on central bank interest rates, commercial bank deposits, and commodity prices.</li>
+          <li><strong>Syndicated Repetition:</strong> A single corporate press release syndicated across 10+ Egyptian portals with minor headline variations.</li>
+          <li><strong>Transliteration Inconsistencies:</strong> Brand names distorted in translation (e.g., <em>Souhoola</em> as <em>SooLa</em>, <em>valU</em> as <em>Valiu</em>).</li>
+          <li><strong>AI Hallucination Risk:</strong> Standard chat LLMs inventing speculative opinions rather than grounded regulatory facts.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="color: #15803d;">
+          <span>✅ The Agent's Solution</span>
+        </div>
+        <ul style="font-size: 8.2pt; padding-left: 15px; margin: 0;">
+          <li><strong>Dual Cadence Flexibility:</strong> Runs daily for active morning intelligence; configurable weekly via GitHub Actions.</li>
+          <li><strong>5-Tier Deduplication:</strong> Groups syndicated media coverage into unified canonical events.</li>
+          <li><strong>Deterministic Brand Dictionary:</strong> Normalizes Egyptian fintech names to canonical corporate spellings.</li>
+          <li><strong>Strict Factuality:</strong> Grounded summaries containing strictly numbers, dates, decisions, and source links.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout callout-blue">
+      <div class="callout-title">💡 Architectural Principle: Why This System is NOT a Chatbot</div>
+      The Forsa News Agent is completely <strong>headless, non-conversational, and autonomous</strong>. It does not wait for user prompts. Built on <strong>LangGraph</strong>, it is an autonomous state machine that triggers automatically on its scheduled run (daily morning flow or weekly GitHub Action dispatch), executes an end-to-end 9-stage data and AI pipeline, updates a persistent PostgreSQL database ledger to guarantee 100% idempotency, delivers a curated intelligence digest to the executive inbox, and cleanly terminates.
+    </div>
+
+    <h2>Document Table of Contents</h2>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 12px; margin-top: 4px;">
+      <div class="toc-item"><span><strong>Chapter 1:</strong> Executive Summary &amp; Core Purpose</span><span>Page 1</span></div>
+      <div class="toc-item"><span><strong>Chapter 2:</strong> Domain Scope &amp; Dual Scheduling (Daily Production vs. Weekly GitHub Actions)</span><span>Page 2</span></div>
+      <div class="toc-item"><span><strong>Chapter 3:</strong> The End-to-End Pipeline: Ingestion &amp; Preprocessing (Stages 1–2)</span><span>Page 3</span></div>
+      <div class="toc-item"><span><strong>Chapter 4:</strong> Classification Funnel &amp; 5-Tier Deduplication (Stages 3–4)</span><span>Page 4</span></div>
+      <div class="toc-item"><span><strong>Chapter 5:</strong> Source Verification, Idempotency &amp; Summarization (Stages 5–7)</span><span>Page 5</span></div>
+      <div class="toc-item"><span><strong>Chapter 6:</strong> Executive Email Delivery &amp; "No-News" Protocol (Stages 8–9)</span><span>Page 6</span></div>
+      <div class="toc-item"><span><strong>Chapter 7:</strong> Cloud Orchestration, Dual-Cadence Scheduling &amp; Database Architecture</span><span>Page 7</span></div>
+      <div class="toc-item"><span><strong>Chapter 8:</strong> Production Reliability, Safety Defenses &amp; Lifecycle Cheat Sheet</span><span>Page 8</span></div>
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 1 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>🏢</span> Drive Finance (Forsa) • Executive Intelligence</div>
+      <div class="footer-center">Chapter 1 • Executive Mission &amp; Purpose</div>
+      <div class="footer-right">Page 1 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 2: DOMAIN SCOPE & DUAL SCHEDULING ARCHITECTURE
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Domain Scope &amp; Dual Scheduling Cadence</div>
+    </div>
+
+    <h1><span class="section-num">2</span> Domain Scope &amp; Dual-Cadence Scheduling</h1>
+    <p>
+      A primary differentiator of the Forsa News Agent is its strict domain filtering. Standard financial aggregators fail because they indiscriminately forward macroeconomic commentary, commercial bank deposit updates, and commodity price trends. The Forsa agent is calibrated strictly for an Egyptian consumer lending and BNPL institution.
+    </p>
+
+    <div class="callout callout-amber">
+      <div class="callout-title">⚖️ Strategic Distinction: Why Central Bank of Egypt (CBE) News is Excluded</div>
+      Forsa is a Non-Banking Financial Institution (NBFI) licensed and regulated by the <strong>Financial Regulatory Authority (FRA)</strong> pursuant to Egyptian Consumer Finance Law No. 18 of 2020. Forsa is <em>not</em> a commercial bank regulated by the Central Bank of Egypt (CBE). Consequently, CBE Monetary Policy Committee rate decisions, commercial banking reserve requirements, and interbank liquidity operations are intentionally filtered out. This keeps executive briefings strictly focused on consumer lending, BNPL installment regulations, credit caps, and direct market competitors.
+    </div>
+
+    <h2>Monitoring Scope Boundary Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 48%;">In-Scope Intelligence (Retained &amp; Prioritized)</th>
+          <th style="width: 52%;">Out-of-Scope Noise (Filtered &amp; Dropped)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="tag tag-green">REGULATORY</span> <strong>Financial Regulatory Authority (FRA):</strong> Circulars, supervisory decrees, board decisions, and licensing guidelines.
+          </td>
+          <td>
+            <span class="tag tag-red">DROPPED</span> <strong>Central Bank of Egypt (CBE):</strong> Commercial banking interest rates, MPC policy statements, and reserve ratios.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="tag tag-green">LENDING</span> <strong>Consumer Finance Dynamics:</strong> Law 18/2020 updates, consumer debt burden limits, BNPL frameworks, and retail credit regulations.
+          </td>
+          <td>
+            <span class="tag tag-red">DROPPED</span> <strong>Sovereign Debt &amp; Treasuries:</strong> Egyptian government Treasury Bill (T-bill) and Treasury Bond (T-bond) auction results.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="tag tag-green">COMPETITORS</span> <strong>Competitor Intelligence:</strong> Product launches, merchant partnerships, expansions, and debt issuances by valU, MNT-Halan, Souhoola, Contact, Aman, Sympl, Blnk, Fawry, Shahry.
+          </td>
+          <td>
+            <span class="tag tag-red">DROPPED</span> <strong>Commodities &amp; Shipping:</strong> Food prices, poultry, wheat tenders, fertilizer, Suez Canal freight rates, and oil indices.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="tag tag-green">INFRASTRUCTURE</span> <strong>Credit &amp; Identity:</strong> I-Score bureau regulations, e-KYC digital onboarding, OTP verification rules, and digital signature compliance.
+          </td>
+          <td>
+            <span class="tag tag-red">DROPPED</span> <strong>Academic &amp; Ceremonial:</strong> University hackathons, "Got Talent" contests, student competitions, and internal company awards.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="tag tag-green">CAPITAL</span> <strong>Securitization &amp; Markets:</strong> Securitized bond tranches by consumer finance companies and weekly EGX30 benchmark recap.
+          </td>
+          <td>
+            <span class="tag tag-red">DROPPED</span> <strong>Traditional Insurance:</strong> Marine, cargo, fire, and agricultural insurance syndication pools unrelated to retail lending.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="tag tag-green">FINTECH</span> <strong>Payment Infrastructure:</strong> Digital wallets, payment aggregators, and national payment rails (InstaPay) affecting consumer transactions.
+          </td>
+          <td>
+            <span class="tag tag-red">DROPPED</span> <strong>Clickbait &amp; Stubs:</strong> Rumor pieces lacking dates, concrete financial figures, or official verification.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Dual Scheduling Architecture: Daily vs. Weekly Execution</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header" style="color: #0a192f;">
+          <span>☀️ Active Production: Daily Morning Schedule</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          The automation schedule is actively working on a <strong>daily cadence</strong>. Operating with a 24-hour lookback window, it delivers morning intelligence to leadership so that breaking competitor merchant deals, consumer app updates, and urgent FRA circulars are reviewed within hours.
+        </p>
+        <span class="tag tag-green">Active Production Default</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="color: #2563eb;">
+          <span>🗓️ Configurable Via GitHub Actions: Weekly Digest</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          Via <strong>GitHub Actions</strong> (<code>weekly_news.yml</code>), the schedule can be configured or triggered to execute <strong>weekly</strong> with a 7-day lookback (<code>lookback_days: '7'</code>). This consolidates the entire week's developments into a comprehensive strategic executive digest.
+        </p>
+        <span class="tag tag-blue">GitHub Action Workflow Dispatch</span>
+      </div>
+    </div>
+
+    <div class="callout callout-emerald">
+      <div class="callout-title">🛡️ Absolute Idempotency &amp; Safety Overlap Guarantee</div>
+      Whether running daily or weekly, the ingestion window automatically incorporates a <strong>6-hour safety overlap</strong> (<code>OVERLAP_HOURS = 6</code>) to capture stories published around execution boundaries. The persistent PostgreSQL <code>sent_news</code> ledger table guarantees that events delivered in previous runs are never emailed again.
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 2 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>⚖️</span> Domain Guardrails (FRA vs. CBE) &amp; Dual Scheduling</div>
+      <div class="footer-center">Chapter 2 • Operational Scope &amp; Cadence Architecture</div>
+      <div class="footer-right">Page 2 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 3: PIPELINE TOPOLOGY & INGESTION (STAGES 1-2)
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Pipeline Topology &amp; Ingestion / Preprocessing</div>
+    </div>
+
+    <h1><span class="section-num">3</span> The 9-Stage Pipeline: Ingestion &amp; Preprocessing</h1>
+    <p>
+      The core pipeline is implemented as a compiled state graph using <strong>LangGraph</strong>. Execution moves deterministically through 9 specialized functional nodes, accumulating verified metadata in a strongly-typed state object (<code>AgentState</code>).
+    </p>
+
+    <div class="flow-diagram">
+<span class="kw">START</span> ──► <span class="hl">[1. collect_news]</span> ──► <span class="hl">[2. preprocess_news]</span> ──► <span class="hl">[3. classify_articles]</span>
+                 │
+                 ▼
+<span class="hl">[4. deduplicate_articles]</span> ──► <span class="hl">[5. verify_sources]</span> ──► <span class="hl">[6. filter_important_news]</span>
+                                                                 │
+                                ┌────────────────────────────────┴────────────────────────────────┐
+                                ▼ (has_news)                                                     ▼ (no_news)
+                      <span class="sc">[7. summarize_news]</span>                                               <span class="cm">[handle_no_news]</span>
+                                │                                                                 │
+                                ▼                                                                 ├──► (skip mode) ──► <span class="kw">END</span>
+                      <span class="hl">[8. format_email]</span> ◄─────────────────────────────────────────────────────────┘    (send_empty mode)
+                                │
+                                ▼
+                       <span class="hl">[9. send_email]</span> ──► <span class="kw">END</span>
+    </div>
+
+    <!-- STAGE 1 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 1</span>
+          <span>Resilient Multi-Source News Ingestion</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/collect.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Runs all collectors concurrently. Ingestion failures from any single publisher are isolated so the overall workflow never crashes:
+        </p>
+        <ul>
+          <li><strong>Tier 1 Official FRA Scraper:</strong> Directly scrapes official press releases, circulars, and supervisory manuals from the Financial Regulatory Authority portal (<code>fra.gov.eg</code>).</li>
+          <li><strong>SearchManager Primary Engine:</strong> Dispatches targeted searches via SerpAPI for monitored competitors (e.g., <em>valU, Souhoola, MNT-Halan, Blnk</em>) and regulatory keywords.</li>
+          <li><strong>Zero-Cost Fallback Retrieval Engine:</strong> If SerpAPI quota is exhausted, rate-limited, or disabled, the <code>SearchManager</code> automatically activates fallback retrieval:
+            <ul>
+              <li>Dynamic query-based Google News RSS endpoints (zero API cost).</li>
+              <li>Publisher direct RSS feeds (<em>Amwal Al Ghad, Daily News Egypt, Al Borsa News, Economy Plus</em>).</li>
+              <li>Direct section scrapers (<em>Enterprise Egypt, Techpoint Africa</em>).</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> Collection window timestamps</div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> Deduplicated raw articles saved to DB</div>
+          <div class="stage-detail-item"><strong>Failure Defense:</strong> Per-source async isolation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 2 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 2</span>
+          <span>Text Sanitization, Encoding &amp; Full-Text Hydration</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/preprocess.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Raw web articles and RSS feeds often contain noisy HTML, broken encodings, or truncated teasers. This node cleans and enriches text before any LLM processing:
+        </p>
+        <ul>
+          <li><strong>Boilerplate Stripping:</strong> Removes ads, tracking pixels, cookie notices, and navigation chrome using BeautifulSoup and Trafilatura.</li>
+          <li><strong>Unicode NFC &amp; Mojibake Resolution:</strong> Corrects Arabic character encoding corruptions (converting UTF-8/Windows-1256 mojibake into clean Unicode NFC).</li>
+          <li><strong>Full-Text Article Hydration:</strong> RSS feeds often supply only a 1-sentence teaser. The hydrator identifies truncated articles and fetches the complete body text from the canonical URL.</li>
+          <li><strong>Content Hash Generation:</strong> Generates a SHA-256 cryptographic hash of the sanitized body text for downstream deduplication.</li>
+        </ul>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> <code>raw_articles</code></div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> Sanitized <code>clean_articles</code></div>
+          <div class="stage-detail-item"><strong>Integrity Check:</strong> Content SHA-256 generation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 3 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>🔄</span> LangGraph Topology • Multi-Source Resilient Ingestion</div>
+      <div class="footer-center">Chapter 3 • Stages 1–2: Ingestion &amp; Preprocessing</div>
+      <div class="footer-right">Page 3 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 4: CLASSIFICATION & DEDUPLICATION (STAGES 3-4)
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Classification Funnel &amp; 5-Tier Deduplication</div>
+    </div>
+
+    <h1><span class="section-num">4</span> Classification Funnel &amp; Deduplication</h1>
+    <p>
+      Raw financial news volume is substantial. Sending every ingested article to an LLM is both slow and expensive. The agent employs an efficient 3-stage filtration funnel followed by a 5-tier deduplication cascade.
+    </p>
+
+    <!-- STAGE 3 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 3</span>
+          <span>Multi-Stage Classification Funnel (Rule + LLM)</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/classify.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Combines zero-cost deterministic rules with Google Gemini Flash to classify and score candidates:
+        </p>
+        <ul>
+          <li><strong>Stage 1 — Deterministic Keyword Pre-Filter (Zero Token Cost):</strong> Evaluates articles against compiled regex patterns. Articles containing zero consumer finance/regulatory keywords, or matching out-of-scope triggers (e.g., CBE rates, student contests, grain prices), are rejected instantly at zero token cost.</li>
+          <li><strong>Stage 2 — Deterministic Domain Rules:</strong> Flags high-confidence matches (e.g., direct FRA portal items automatically receive 100 relevance and official category assignment).</li>
+          <li><strong>Stage 3 — Google Gemini Flash Classification:</strong> Evaluates remaining candidate articles, assigning category (<em>FRA, Consumer Finance, Competitor, FinTech</em>), subcategory, detected entities, competitor matches, a relevance score (0–100), and an importance score (0–100).</li>
+        </ul>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> <code>clean_articles</code></div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> <code>relevant_articles</code> (Score &gt;= 50)</div>
+          <div class="stage-detail-item"><strong>Efficiency:</strong> Drops ~70% of noise prior to LLM</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 4 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 4</span>
+          <span>5-Tier Multi-Signal Deduplication Stack</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/deduplicate.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          In Egypt, a single corporate partnership or bond issuance is often re-published by 10+ financial outlets with slightly altered headlines. The agent collapses these into a single unified <code>NewsEvent</code> using an ordered 5-signal cascade:
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%;">Signal Layer</th>
+              <th style="width: 45%;">Matching Mechanism</th>
+              <th style="width: 30%;">Threshold / Behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Canonical URL</strong></td>
+              <td>Normalized URL matching after stripping UTM parameters and tracking tokens.</td>
+              <td>Exact match; instant collapse.</td>
+            </tr>
+            <tr>
+              <td><strong>2. Content SHA-256</strong></td>
+              <td>Cryptographic hash of cleaned body text.</td>
+              <td>Identical syndicated press release bodies.</td>
+            </tr>
+            <tr>
+              <td><strong>3. Fuzzy Title Match</strong></td>
+              <td>Levenshtein Token Sort Ratio comparing key terms across headlines.</td>
+              <td>Token Sort Ratio &gt;= 85%.</td>
+            </tr>
+            <tr>
+              <td><strong>4. Entity &amp; Time Window</strong></td>
+              <td>Shared named entities (e.g., "valU" + "Amazon") within an active time window.</td>
+              <td>Domain-specific entity overlap.</td>
+            </tr>
+            <tr>
+              <td><strong>5. Vector Embeddings</strong></td>
+              <td>Cosine similarity of Google Gemini text embeddings generated on title + first 500 chars.</td>
+              <td>Cosine Similarity &gt;= 0.85.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout callout-emerald" style="margin-top: 5px; padding: 5px 10px;">
+          <strong>Cross-Topic Protection Guard:</strong> Ensures that distinct official decisions issued on the same day (e.g., FRA I-Score Circular No. 174 vs. Real Estate Valuation Decree No. 191) are recognized as separate events and never improperly merged.
+        </div>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> <code>relevant_articles</code></div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> Unified <code>NewsEvent</code> clusters</div>
+          <div class="stage-detail-item"><strong>Cluster Authority:</strong> Selects most official source as canonical</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 4 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>🔍</span> Multi-Stage Funnel • 5-Tier Multi-Signal Deduplication</div>
+      <div class="footer-center">Chapter 4 • Stages 3–4: Classification &amp; Deduplication</div>
+      <div class="footer-right">Page 4 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 5: VERIFICATION, IDEMPOTENCY & SUMMARIZATION (STAGES 5-7)
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Verification, Idempotency &amp; Summarization</div>
+    </div>
+
+    <h1><span class="section-num">5</span> Verification, Idempotency &amp; Summarization</h1>
+    <p>
+      Before news reaches executive leadership, it must be verified for institutional credibility, filtered for high strategic impact, checked against past deliveries, and synthesized with zero AI hallucination.
+    </p>
+
+    <!-- STAGE 5 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 5</span>
+          <span>Source Verification &amp; Provenance Tiering</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/verify.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Leadership must know whether an item is an official decree, verified financial press, or uncorroborated media:
+        </p>
+        <div class="grid-3" style="margin: 4px 0;">
+          <div class="card" style="border-left: 3px solid #16a34a; padding: 6px 9px;">
+            <strong style="color: #15803d;">Tier 1: OFFICIAL</strong><br>
+            <span style="font-size: 7.8pt;">FRA portal, Egyptian Gazette, government gazette decrees.</span>
+          </div>
+          <div class="card" style="border-left: 3px solid #2563eb; padding: 6px 9px;">
+            <strong style="color: #1d4ed8;">Tier 2: VERIFIED</strong><br>
+            <span style="font-size: 7.8pt;"><em>Enterprise, Al Borsa, Daily News Egypt, Amwal Al Ghad, Economy Plus</em>.</span>
+          </div>
+          <div class="card" style="border-left: 3px solid #64748b; padding: 6px 9px;">
+            <strong style="color: #475569;">Tier 3: UNVERIFIED</strong><br>
+            <span style="font-size: 7.8pt;">General blogs, aggregators; requires corroboration.</span>
+          </div>
+        </div>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> <code>events</code></div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> Events with verification badges</div>
+          <div class="stage-detail-item"><strong>Audit:</strong> Source authority preserved</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 6 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 6</span>
+          <span>Importance Filtering &amp; Idempotency Ledger</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/filter.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Enforces executive selectivity and guarantees that the CEO is never sent the same intelligence twice:
+        </p>
+        <ul>
+          <li><strong>Importance Cutoff:</strong> Events are evaluated on a 0–100 scale using Gemini Flash. Only events scoring <strong>&gt;= 60</strong> (the <code>IMPORTANCE_THRESHOLD</code>) are approved for executive delivery.</li>
+          <li><strong>Database Idempotency Check:</strong> Queries the PostgreSQL <code>sent_news</code> ledger table. If an event or canonical story was already sent to leadership in any previous run (whether yesterday or weeks ago), it is filtered out.</li>
+          <li><strong>Conditional Routing:</strong>
+            <ul>
+              <li>If important, unread events exist ➔ routes forward to <code>summarize_news</code>.</li>
+              <li>If zero events pass the threshold ➔ routes to <code>handle_no_news</code>.</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> <code>events</code></div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> <code>important_events</code></div>
+          <div class="stage-detail-item"><strong>Ledger:</strong> PostgreSQL historical verification</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 7 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 7</span>
+          <span>Factual Summarization &amp; Brand Normalization</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/summarize.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Synthesizes each approved event into an executive briefing using <strong>Google Gemini</strong> under strict prompt constraints:
+        </p>
+        <ul>
+          <li><strong>Zero Speculation / No AI Advice:</strong> Strictly prohibited from generating opinions, editorializing, or answering "What this means for Forsa." Produces only verifiable facts, figures, dates, and decrees.</li>
+          <li><strong>Stub Rejection:</strong> Discards articles that lack substance, concrete dates, or institutional decisions.</li>
+          <li><strong>Deterministic Brand Dictionary (<code>spelling.py</code>):</strong> Standardizes phonetic Arabic transliterations into canonical corporate spellings:</li>
+        </ul>
+        <table style="margin-top: 4px;">
+          <thead>
+            <tr>
+              <th style="width: 50%;">Raw Transliteration / Arabic</th>
+              <th style="width: 50%;">Canonical Executive Output</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><em>SooLa, Sohoola, Sahula, سهولة</em></td><td><strong>Souhoola</strong></td></tr>
+            <tr><td><em>Valiu, Falio, Valyou, فاليو</em></td><td><strong>valU</strong></td></tr>
+            <tr><td><em>Mnt-Halan, MNT Halan, حالا</em></td><td><strong>MNT-Halan</strong></td></tr>
+            <tr><td><em>Blink Consumer Finance, بلنك</em></td><td><strong>Blnk</strong></td></tr>
+            <tr><td><em>Simple BNPL, Sembl, سيمبل</em></td><td><strong>Sympl</strong></td></tr>
+            <tr><td><em>Faury, Fawri, فوري</em></td><td><strong>Fawry</strong></td></tr>
+            <tr><td><em>i-score, iscore, IScore, اي سكور</em></td><td><strong>I-Score</strong></td></tr>
+          </tbody>
+        </table>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> <code>important_events</code></div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> Attached <code>EventSummary</code></div>
+          <div class="stage-detail-item"><strong>Quality:</strong> Rejects stubs and speculative text</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 5 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>✅</span> Source Provenance • Idempotency • Gemini Synthesis</div>
+      <div class="footer-center">Chapter 5 • Stages 5–7: Verification &amp; Summarization</div>
+      <div class="footer-right">Page 5 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 6: EMAIL DELIVERY & NO-NEWS PROTOCOL (STAGES 8-9)
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Email Delivery &amp; "No-News" Protocol</div>
+    </div>
+
+    <h1><span class="section-num">6</span> Executive Email Delivery &amp; Formatting</h1>
+    <p>
+      The final delivery stage formats the curated intelligence into an executive briefing and delivers it through enterprise communication channels with full operational auditing.
+    </p>
+
+    <!-- STAGE 8 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 8</span>
+          <span>Executive Digest Layout &amp; "No-News" Protocol</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/format_email.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Assembles a responsive HTML and plain-text briefing designed for Microsoft Outlook and mobile mail clients:
+        </p>
+        <ul>
+          <li><strong>Visual Category Urgency Hierarchy:</strong>
+            <ul>
+              <li>🔴 <strong>FRA &amp; Regulation:</strong> Placed at the top (compliance mandates, licensing).</li>
+              <li>🟠 <strong>Consumer Finance &amp; Competitors:</strong> Competitor product offers, merchant deals, securitization.</li>
+              <li>🟡 <strong>FinTech &amp; Financial Market:</strong> Digital payment infrastructure, wallets, EGX30 recap.</li>
+            </ul>
+          </li>
+          <li><strong>Information Hygiene:</strong> Internal system metrics (such as relevance scores, importance numbers, or AI prompts) are strictly stripped from the email. Executives see only the headline, structured summary, verified source, publication date (Cairo time), and direct article link.</li>
+          <li><strong>Configurable "No-News" Handling:</strong>
+            <ul>
+              <li><code>NO_NEWS_BEHAVIOUR=skip</code> (Default): Silent termination. Zero emails sent, preventing executive inbox clutter on quiet days.</li>
+              <li><code>NO_NEWS_BEHAVIOUR=send_empty</code>: Sends a brief confirmation confirming the agent ran successfully and found no material issues.</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> Curated summaries</div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> <code>email_html</code>, <code>email_plain</code></div>
+          <div class="stage-detail-item"><strong>Timezone:</strong> Standardized to <code>Africa/Cairo</code></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 9 -->
+    <div class="stage-card">
+      <div class="stage-header">
+        <div class="stage-title">
+          <span class="stage-num-badge">STAGE 9</span>
+          <span>Enterprise Delivery &amp; Run Telemetry Persistence</span>
+        </div>
+        <span class="stage-node-badge">app/graph/nodes/send_email.py</span>
+      </div>
+      <div class="stage-body">
+        <p>
+          Dispatches the intelligence briefing and records full audit records in the database:
+        </p>
+        <div class="grid-3" style="margin: 6px 0;">
+          <div class="card">
+            <strong style="color: #2563eb;">1. Power Automate</strong><br>
+            <span style="font-size: 7.8pt;">Dispatches JSON payload to webhook. Uses native Outlook connector. <strong>Zero IT admin friction</strong>.</span>
+          </div>
+          <div class="card">
+            <strong style="color: #0a192f;">2. M365 Graph API</strong><br>
+            <span style="font-size: 7.8pt;">Direct OAuth 2.0 client credentials via Microsoft Graph API (<code>Mail.Send</code>).</span>
+          </div>
+          <div class="card">
+            <strong style="color: #475569;">3. Standard SMTP</strong><br>
+            <span style="font-size: 7.8pt;">Native Python <code>smtplib</code> with STARTTLS or SSL encryption.</span>
+          </div>
+        </div>
+        <p style="font-size: 8.2pt; margin-bottom: 0;">
+          <strong>Ledgering &amp; Telemetry:</strong> Records each delivered event into the <code>sent_news</code> table and creates a comprehensive record in <code>workflow_runs</code> (tracking articles collected, deduplicated, verified, and delivered).
+        </p>
+        <div class="stage-details">
+          <div class="stage-detail-item"><strong>Inputs:</strong> Formatted email</div>
+          <div class="stage-detail-item"><strong>Outputs:</strong> Delivery status &amp; run statistics</div>
+          <div class="stage-detail-item"><strong>Audit:</strong> Complete execution telemetry logged</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-blue">
+      <div class="callout-title">📩 Executive Digest Format Preview</div>
+      Executive emails are styled with corporate branding, clean borders, and clear metadata badges. Each item includes:
+      <strong>Canonical Headline</strong>, <strong>Factual Summary</strong> (2–3 bullet points), <strong>Verified Source Badge</strong>, <strong>Publication Date</strong> (Cairo time), and a <strong>Direct Source Link</strong>.
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 6 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>📬</span> Executive Email Formatting • Power Automate &amp; SMTP</div>
+      <div class="footer-center">Chapter 6 • Stages 8–9: Delivery Engine &amp; Formatting</div>
+      <div class="footer-right">Page 6 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 7: CLOUD ORCHESTRATION & DATABASE SCHEMA
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Cloud Orchestration &amp; Dual Scheduling Setup</div>
+    </div>
+
+    <h1><span class="section-num">7</span> Cloud Orchestration &amp; Database Architecture</h1>
+    
+    <h2>Dual-Cadence Scheduling: Daily Production vs. Weekly GitHub Actions</h2>
+    <p>
+      The architecture decouples the execution engine from the schedule, enabling both daily and weekly intelligence cadences:
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header" style="color: #1e3a8a;">
+          <span>☀️ Daily Production Automation Schedule</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          The active production schedule triggers <strong>daily</strong> via Microsoft Power Automate Scheduled Cloud Flow (Recurrence: <code>1 Day</code>). It spins up the runner, collects the past 24 hours of Egyptian financial news, and delivers a concise morning briefing directly to executive inboxes.
+        </p>
+        <span class="tag tag-green">Currently Active Schedule</span>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="color: #7e22ce;">
+          <span>🗓️ Weekly Consolidation Via GitHub Actions</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          Via <strong>GitHub Actions</strong> (<code>weekly_news.yml</code>), the schedule can be configured or triggered to run <strong>weekly</strong> by passing <code>lookback_days: '7'</code>. This aggregates all regulatory and competitor events across the full 7-day week into a single executive digest.
+        </p>
+        <span class="tag tag-purple">Configurable On-Demand / Scheduled</span>
+      </div>
+    </div>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 11px; margin: 6px 0; font-size: 8pt;">
+      <strong>How to Configure Weekly Mode in GitHub Actions:</strong><br>
+      • <strong>Via GitHub UI:</strong> Actions → <em>Financial News Digest</em> → <em>Run workflow</em> → Set <code>Lookback Days</code> to <code>7</code>.<br>
+      • <strong>Via Power Automate Recurrence:</strong> Change Recurrence Frequency from <code>Day</code> to <code>Week</code> (Sunday 08:30 AM Cairo) and set JSON body: <code>{"inputs": {"lookback_days": "7"}}</code>.<br>
+      • <strong>Via GitHub CLI:</strong> <code>gh workflow run weekly_news.yml -f lookback_days=7</code>.
+    </div>
+
+    <h2>Relational Persistence Model (PostgreSQL &amp; SQLAlchemy Async)</h2>
+    <p>
+      The agent persists state, historical intelligence, and audit trails across 7 relational tables managed by SQLAlchemy 2.0 Async (<code>asyncpg</code>) and Alembic:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Database Table</th>
+          <th style="width: 45%;">Stored Content &amp; Entity Relationships</th>
+          <th style="width: 30%;">Operational Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>sources</code></td>
+          <td>News portals, FRA official portal, RSS feed URLs, language, and authority tier (1, 2, or 3).</td>
+          <td>Source registry &amp; provenance verification.</td>
+        </tr>
+        <tr>
+          <td><code>competitors</code></td>
+          <td>Monitored Egyptian fintechs (valU, MNT-Halan, Souhoola, Blnk, etc.) with alias spellings.</td>
+          <td>Entity matching &amp; brand dictionary seeds.</td>
+        </tr>
+        <tr>
+          <td><code>articles</code></td>
+          <td>Ingested raw articles: title, canonical URL, SHA-256 hash, raw text, and published timestamp.</td>
+          <td>Ingestion history &amp; full-text cache.</td>
+        </tr>
+        <tr>
+          <td><code>article_classifications</code></td>
+          <td>Category, subcategory, entities JSON, relevance score, importance score, and confidence.</td>
+          <td>Machine learning &amp; LLM audit log.</td>
+        </tr>
+        <tr>
+          <td><code>events</code></td>
+          <td>Unified deduplicated events: canonical title, summary, event date, verification status.</td>
+          <td>Curated intelligence events.</td>
+        </tr>
+        <tr>
+          <td><code>sent_news</code></td>
+          <td>Foreign key links to sent <code>events</code>, recipient email address, run ID, and timestamp.</td>
+          <td><strong>Idempotency ledger</strong> (prevents duplicate emails).</td>
+        </tr>
+        <tr>
+          <td><code>workflow_runs</code></td>
+          <td>Execution records: start/completion timestamps, status, counts of collected/sent items, error logs.</td>
+          <td>Operational health &amp; executive reporting.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ADAPTABLE FOOTER: PAGE 7 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>☁️</span> Power Automate &amp; GitHub Actions Flow • PostgreSQL Schema</div>
+      <div class="footer-center">Chapter 7 • Dual Scheduling &amp; Database Persistence</div>
+      <div class="footer-right">Page 7 of 8</div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       PAGE 8: PRODUCTION RELIABILITY & CHEAT SHEET
+       ========================================================================= -->
+  <div class="page">
+    <div class="page-top-bar">
+      <div>Forsa Financial News Monitoring Agent</div>
+      <div>Production Reliability &amp; Lifecycle Cheat Sheet</div>
+    </div>
+
+    <h1><span class="section-num">8</span> Production Reliability &amp; Cheat Sheet</h1>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header" style="color: #0a192f;">
+          <span>🛡️ Rate Limiting &amp; API Pacing</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          To prevent Google Gemini API 429 quota exhaustion during high-volume periods, all LLM calls use sequential pacing with <code>asyncio.Semaphore(1)</code> and 2–4 second sleep intervals.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="color: #0a192f;">
+          <span>🛡️ Pre-Flight Search Circuit Breaker</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          Before executing expensive search API calls, <code>serpapi_checker.py</code> queries account quotas. If quota is depleted (&lt; 5 searches), it flips immediately to the free RSS/scraper fallback without failing.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header" style="color: #0a192f;">
+          <span>🛡️ Isolated Collector Failures</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          Every web scraper and RSS collector executes inside an isolated <code>asyncio.gather(..., return_exceptions=True)</code> block. If one news portal is down or times out, the other sources continue unaffected.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="color: #0a192f;">
+          <span>🛡️ Atomic State Persistence</span>
+        </div>
+        <p style="font-size: 7.8pt;">
+          All database operations use atomic nested transactions (<code>session.begin_nested()</code>). If a single article insertion encounters a duplicate key error, only that row is rolled back.
+        </p>
+      </div>
+    </div>
+
+    <h2>Pipeline Lifecycle Quick-Reference Cheat Sheet</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 8%;">Step</th>
+          <th style="width: 20%;">Node Name</th>
+          <th style="width: 32%;">Primary Action</th>
+          <th style="width: 40%;">Core Defense / Quality Guarantee</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1</strong></td>
+          <td><code>collect_news</code></td>
+          <td>Gathers from FRA, SerpAPI, and RSS fallbacks.</td>
+          <td>Automatic fallback prevents API quota blockage.</td>
+        </tr>
+        <tr>
+          <td><strong>2</strong></td>
+          <td><code>preprocess_news</code></td>
+          <td>Sanitizes HTML, fixes mojibake, hydrates full text.</td>
+          <td>Ensures LLM receives clean, complete Unicode text.</td>
+        </tr>
+        <tr>
+          <td><strong>3</strong></td>
+          <td><code>classify_articles</code></td>
+          <td>Filters out-of-scope news and scores relevance.</td>
+          <td>Drops CBE/commodity noise at zero token cost.</td>
+        </tr>
+        <tr>
+          <td><strong>4</strong></td>
+          <td><code>deduplicate_articles</code></td>
+          <td>Groups syndicated stories into single events.</td>
+          <td>5-signal cascade eliminates media redundancy.</td>
+        </tr>
+        <tr>
+          <td><strong>5</strong></td>
+          <td><code>verify_sources</code></td>
+          <td>Assigns OFFICIAL, VERIFIED, or UNVERIFIED tiers.</td>
+          <td>Enforces clear regulatory vs. media provenance.</td>
+        </tr>
+        <tr>
+          <td><strong>6</strong></td>
+          <td><code>filter_important_news</code></td>
+          <td>Applies 60-point cutoff &amp; checks <code>sent_news</code> ledger.</td>
+          <td>Guarantees 100% idempotency (zero repeat emails).</td>
+        </tr>
+        <tr>
+          <td><strong>7</strong></td>
+          <td><code>summarize_news</code></td>
+          <td>Generates factual summaries and normalizes brands.</td>
+          <td>Anti-hallucination constraint &amp; brand dictionary.</td>
+        </tr>
+        <tr>
+          <td><strong>8</strong></td>
+          <td><code>format_email</code></td>
+          <td>Builds mobile-responsive executive digest.</td>
+          <td>Strips internal scores; categorizes by urgency.</td>
+        </tr>
+        <tr>
+          <td><strong>9</strong></td>
+          <td><code>send_email</code></td>
+          <td>Dispatches via Power Automate / Graph / SMTP.</td>
+          <td>Zero IT-admin friction; records run telemetry.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Operational Commands Reference (Daily &amp; Weekly Runs)</h2>
+    <div style="background: #0a192f; color: #f8fafc; border-radius: 6px; padding: 7px 12px; font-family: 'Consolas', monospace; font-size: 7.2pt; line-height: 1.45;">
+      <span class="cm"># Active Production: Run daily execution (1-day lookback)</span><br>
+      <span class="hl">py -3 app/main.py --run-now --days 1</span><br><br>
+      <span class="cm"># Weekly Mode: Run consolidated 7-day lookback execution</span><br>
+      <span class="hl">py -3 app/main.py --run-now --days 7</span><br><br>
+      <span class="cm"># Trigger weekly consolidation run via GitHub CLI</span><br>
+      <span class="hl">gh workflow run weekly_news.yml -f lookback_days=7</span><br><br>
+      <span class="cm"># Start continuous scheduler daemon in background</span><br>
+      <span class="hl">py -3 app/main.py</span>
+    </div>
+
+    <!-- ADAPTABLE FOOTER: PAGE 8 -->
+    <div class="page-bottom-bar">
+      <div class="footer-left"><span>🛡️</span> Production Reliability • Fault Isolation • CLI Reference</div>
+      <div class="footer-center">Chapter 8 • Safeguards &amp; Lifecycle Cheat Sheet</div>
+      <div class="footer-right">Page 8 of 8</div>
+    </div>
+  </div>
+
+</body>
+</html>
+"""
+
+def generate_pdf():
+    print(f"[1/3] Writing publication HTML document to: {OUTPUT_HTML}")
+    with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
+        f.write(HTML_TEMPLATE)
+
+    print(f"[2/3] Compiling 8-page PDF via Chrome Headless...")
+    if not os.path.exists(CHROME_PATH):
+        raise FileNotFoundError(f"Chrome executable not found at: {CHROME_PATH}")
+
+    cmd = [
+        CHROME_PATH,
+        "--headless=new",
+        "--disable-gpu",
+        "--no-pdf-header-footer",
+        f"--print-to-pdf={OUTPUT_PDF}",
+        str(OUTPUT_HTML),
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error during PDF compilation: {result.stderr}", file=sys.stderr)
+        sys.exit(result.returncode)
+
+    if not OUTPUT_PDF.exists():
+        raise RuntimeError("PDF was not created!")
+
+    size_kb = OUTPUT_PDF.stat().st_size / 1024
+    print(f"[3/3] Success! Created PDF at: {OUTPUT_PDF} ({size_kb:.1f} KB)")
+
+
+if __name__ == "__main__":
+    generate_pdf()
